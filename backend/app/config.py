@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
 
+    # Shared secret for the private admin endpoints (user onboarding). Sent as
+    # the `X-Admin-Key` header. Never exposed to the browser.
+    admin_api_key: str
+
     # Postgres direct connection (Alembic + session access). Uses the direct
     # `db.<ref>.supabase.co` host, not the transaction pooler URL.
     database_url: str
