@@ -39,7 +39,11 @@ def _thread_row(
     }
 
 
-def _message_row(*, thread_id: uuid.UUID = THREAD_ID) -> dict:
+def _message_row(
+    *,
+    thread_id: uuid.UUID = THREAD_ID,
+    message_json: dict | None = None,
+) -> dict:
     return {
         "id": str(MESSAGE_ID),
         "thread_id": str(thread_id),
@@ -47,6 +51,7 @@ def _message_row(*, thread_id: uuid.UUID = THREAD_ID) -> dict:
         "content": "hello",
         "sequence_number": 1,
         "created_at": TIMESTAMP,
+        "message_json": message_json,
     }
 
 
@@ -71,6 +76,7 @@ def _expected_message(*, thread_id: uuid.UUID = THREAD_ID) -> dict:
         "content": "hello",
         "sequenceNumber": 1,
         "createdAt": TIMESTAMP,
+        "parts": None,
     }
 
 
@@ -155,6 +161,31 @@ def test_list_messages_success(authed):
         response = client.get(f"/threads/{THREAD_ID}/messages")
     assert response.status_code == 200
     assert response.json() == [_expected_message()]
+
+
+def test_list_messages_rehydrates_persisted_parts(authed):
+    message_json = {
+        "role": "assistant",
+        "parts": [
+            {"type": "text", "text": "Grounded answer."},
+            {
+                "type": "data-citations",
+                "data": {"citations": [{"ticker": "NVDA", "excerpt": "passage"}]},
+            },
+        ],
+    }
+    row = _message_row(message_json=message_json)
+    row["role"] = "assistant"
+    with (
+        _patch_chats("get_thread", _thread_row()),
+        _patch_chats("list_messages", [row]),
+    ):
+        response = client.get(f"/threads/{THREAD_ID}/messages")
+    assert response.status_code == 200
+    body = response.json()[0]
+    assert body["role"] == "assistant"
+    assert body["parts"] == message_json["parts"]
+    assert body["parts"][1]["type"] == "data-citations"
 
 
 def test_list_messages_missing_thread_is_404(authed):

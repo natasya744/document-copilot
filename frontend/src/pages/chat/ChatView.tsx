@@ -5,17 +5,31 @@ import { Link } from 'react-router-dom'
 
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageItem } from '@/components/chat/MessageItem'
+import { ThinkingIndicator } from '@/components/chat/ThinkingIndicator'
 import { Button } from '@/components/ui/button'
 import type { ChatMessage, Thread } from '@/lib/api'
 import { env } from '@/lib/env'
 import { getAccessToken } from '@/lib/supabase'
 
+const SUGGESTIONS = [
+  'What are the main risk factors for the last three filings?',
+  'How did revenue trend across the years?',
+  'What changed in the latest annual report vs the prior one?',
+]
+
 function toUIMessage(message: ChatMessage): UIMessage {
-  return {
-    id: message.id,
-    role: message.role,
-    parts: [{ type: 'text', text: message.content }],
-  }
+  const parts = message.parts?.length
+    ? (message.parts as unknown as UIMessage['parts'])
+    : ([{ type: 'text' as const, text: message.content }] as UIMessage['parts'])
+  return { id: message.id, role: message.role, parts }
+}
+
+function messageText(message: UIMessage): string {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('')
+    .trim()
 }
 
 /** Wires AI SDK `useChat` to the backend `/chat/stream` endpoint. */
@@ -45,6 +59,10 @@ export function ChatView({
   })
 
   const busy = status === 'submitted' || status === 'streaming'
+  const lastMessage = messages[messages.length - 1]
+  const lastIsEmptyAssistant =
+    lastMessage?.role === 'assistant' && messageText(lastMessage).length === 0
+  const showThinking = busy && !lastIsEmptyAssistant
 
   return (
     <div className="mx-auto flex h-screen w-full max-w-2xl flex-col p-6">
@@ -60,13 +78,31 @@ export function ChatView({
       </header>
 
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
-        {messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Ask about the filings — every answer cites the source document and page.
-          </p>
+        {messages.length === 0 && !busy ? (
+          <div className="flex h-full flex-col items-start justify-center gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Ask about the filings</h2>
+              <p className="text-sm text-muted-foreground">
+                Every answer cites the source filing, page, and passage.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {SUGGESTIONS.map((question) => (
+                <Button
+                  key={question}
+                  variant="outline"
+                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
+                  onClick={() => void sendMessage({ text: question })}
+                >
+                  {question}
+                </Button>
+              ))}
+            </div>
+          </div>
         ) : (
           messages.map((message) => <MessageItem key={message.id} message={message} />)
         )}
+        {showThinking ? <ThinkingIndicator /> : null}
       </div>
 
       {error ? (

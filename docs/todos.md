@@ -47,16 +47,16 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ## Phase 4 — Grounded chat (backend, the trust contract)
 
-- [ ] `app/assistant/outputs.py` — `GroundedAnswer`, `Citation`, `SourcePassage`
-- [ ] `app/grounding/validator.py` — every citation must map to a retrieved passage; fail controlled otherwise
-- [ ] `app/assistant/agent.py` — PydanticAI agent with typed deps + bounded tools (`search_filings`, `read_chunk`, `read_surrounding_chunks`)
-- [ ] `app/assistant/instructions.md` — product contract: only from retrieved passages, cite everything, refuse unsupported, no stock picks
+- [x] `app/assistant/outputs.py` — `GroundedAnswer`, `Citation`, `SourcePassage`
+- [x] `app/grounding/validator.py` — every citation must map to a retrieved passage; fail controlled otherwise
+- [x] `app/assistant/agent.py` — PydanticAI agent with typed deps + bounded tools (`search_filings`, `read_chunk`, `read_surrounding_chunks`)
+- [x] `app/assistant/instructions.md` — product contract: only from retrieved passages, cite everything, refuse unsupported, no stock picks
 - [x] `app/chat/messages.py` — AI SDK message wire-format conversion
-- [ ] `app/chat/streaming.py` — AI SDK-compatible streaming events (text deltas, structured citations, error events)
-- [ ] `app/chat/orchestrator.py` — full turn lifecycle (auth → retrieve → generate → validate → persist)
-- [ ] `POST /chat/stream` endpoint — `threadId` + AI SDK messages payload
-- [ ] Persist user message, assistant message, citations only after a successful run
-- [ ] Unit tests: citation extraction + grounding enforcement (mock LLM, keep contract tested)
+- [ x] `app/chat/streaming.py` — AI SDK-compatible streaming events (text deltas, structured citations, error events)
+- [x] `app/chat/orchestrator.py` — full turn lifecycle (auth → retrieve → generate → validate → persist)
+- [x] `POST /chat/stream` endpoint — `threadId` + AI SDK messages payload
+- [x] Persist user message, assistant message, citations only after a successful run
+- [] Unit tests: citation extraction + grounding enforcement (mock LLM, keep contract tested)
 
 ## Phase 5 — Frontend chat experience
 

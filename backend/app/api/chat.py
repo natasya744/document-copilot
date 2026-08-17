@@ -43,6 +43,7 @@ class ChatMessageOut(BaseModel):
     content: str
     sequenceNumber: int
     createdAt: datetime
+    parts: list[dict] | None = None
 
 
 def _to_thread(row: dict) -> ThreadOut:
@@ -55,6 +56,7 @@ def _to_thread(row: dict) -> ThreadOut:
 
 
 def _to_message(row: dict) -> ChatMessageOut:
+    message_json = row.get("message_json") or {}
     return ChatMessageOut(
         id=row["id"],
         threadId=row["thread_id"],
@@ -62,6 +64,7 @@ def _to_message(row: dict) -> ChatMessageOut:
         content=row["content"],
         sequenceNumber=row["sequence_number"],
         createdAt=row["created_at"],
+        parts=message_json.get("parts"),
     )
 
 

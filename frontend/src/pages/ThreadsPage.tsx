@@ -8,6 +8,19 @@ import type { Thread } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/http'
 
+function formatUpdatedAt(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  return `Updated ${new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)}`
+}
+
 export function ThreadsPage() {
   const { session, signOut } = useAuth()
   const navigate = useNavigate()
@@ -86,7 +99,10 @@ export function ThreadsPage() {
                 to={`/thread/${thread.id}`}
                 className="block rounded-lg border p-4 transition-colors hover:bg-muted"
               >
-                <span className="font-medium">{thread.title}</span>
+                <span className="block truncate font-medium">{thread.title}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {formatUpdatedAt(thread.updatedAt)}
+                </span>
               </Link>
             </li>
           ))}

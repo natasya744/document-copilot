@@ -56,3 +56,57 @@ async def list_messages(client: AsyncClient, thread_id: uuid.UUID) -> list[dict]
         .execute()
     )
     return result.data or []
+
+
+async def create_message(
+    client: AsyncClient,
+    *,
+    thread_id: uuid.UUID,
+    role: str,
+    content: str,
+    sequence_number: int,
+    message_json: dict | None = None,
+) -> dict:
+    """Insert a chat message with an explicit id (the column has no DB default)."""
+    result = await (
+        client.table("chat_messages")
+        .insert(
+            {
+                "id": str(uuid.uuid4()),
+                "thread_id": str(thread_id),
+                "role": role,
+                "content": content,
+                "sequence_number": sequence_number,
+                "message_json": message_json,
+            }
+        )
+        .execute()
+    )
+    return result.data[0]
+
+
+async def create_citation(
+    client: AsyncClient,
+    *,
+    message_id: uuid.UUID,
+    chunk_id: uuid.UUID,
+    document_id: uuid.UUID,
+    excerpt: str,
+    metadata_: dict,
+) -> dict:
+    """Insert one citation record for an assistant message."""
+    result = await (
+        client.table("message_citations")
+        .insert(
+            {
+                "id": str(uuid.uuid4()),
+                "message_id": str(message_id),
+                "chunk_id": str(chunk_id),
+                "document_id": str(document_id),
+                "excerpt": excerpt,
+                "metadata": metadata_,
+            }
+        )
+        .execute()
+    )
+    return result.data[0]
