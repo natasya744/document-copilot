@@ -22,11 +22,11 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 - [x] `app/main.py` — FastAPI entrypoint + router mounting
 - [x] `app/database/models.py` — SQLAlchemy models: `profiles`, `source_documents`, `document_chunks`, `chat_threads`, `chat_messages`, `message_citations`
 - [x] Alembic init + `env.py` wired to `app.config.settings` and models metadata
-- [x] Initial migration — review and add explicit ops: `create extension vector`, `vector(1536)`, generated `tsvector`, HNSW + GIN indexes, RLS policies
-- [x] Ingest: Markdown extraction from downloaded filing HTML → `source_documents`
-- [ ] Ingest: chunking with metadata (ticker, company, year, filing type, page/section, offsets)
+- [] Initial migration — review and add explicit ops: `create extension vector`, `vector(1536)`, generated `tsvector`, HNSW + GIN indexes, RLS policies
+- [] Ingest: Markdown extraction from downloaded filing HTML → `source_documents`
+- [] Ingest: chunking with metadata (ticker, company, year, filing type, page/section, offsets)
 - [ ] Ingest: OpenAI embeddings → `document_chunks.embedding`
-- [ ] Ingest: writes to Supabase
+- [] Ingest: writes to Supabase
 - [ ] Verify: run sample queries, confirm real chunks return with full metadata
 
 ## Phase 2 — Auth & thread APIs (backend)

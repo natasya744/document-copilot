@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimensions: int = 1536
+    # Chunk budget in tokens for the hybrid chunker. Kept far below the
+    # embedding model's 8191-token input window; larger chunks hurt retrieval.
+    openai_embedding_max_tokens: int = 2000
 
     # Comma-separated browser origins allowed to call the API (CORS).
     # NoDecode keeps the env value as a string so the validator can split it.
