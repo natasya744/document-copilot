@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Document Copilot" [level=2] [ref=e6]
+      - paragraph [ref=e7]: SEC filing assistant
+    - button "New chat" [ref=e8]:
+      - img
+      - text: New chat
+    - generic [ref=e9]:
+      - heading "Conversations" [level=3] [ref=e10]
+      - generic [ref=e11]:
+        - link "New chat" [ref=e27] [cursor=pointer]:
+          - /url: /thread/ec849deb-92ad-4b3d-90b4-8aada55d50f2
+        - link "New chat" [ref=e28] [cursor=pointer]:
+          - /url: /thread/fa612c8b-dc7c-4749-aa0f-bcc5e7994b93
+    - generic [ref=e16]:
+      - generic "putrianastasya744@gmail.com" [ref=e17]
+      - button "Sign out" [ref=e18]:
+        - img
+        - generic [ref=e19]: Sign out
+  - main [ref=e20]:
+    - generic [ref=e29]:
+      - heading "New chat" [level=1] [ref=e31]
+      - generic [ref=e33]:
+        - generic [ref=e36]: How did NVIDIA data center revenue grow in fiscal year 2023?
+        - generic [ref=e38]:
+          - generic [ref=e39]: In fiscal year 2023, NVIDIA's Data Center revenue increased by 41% compared to the previous year. This growth was primarily driven by strong demand from hyperscale customers and purchases made by several cloud service provider partners. These purchases supported multi-year cloud service agreements linked to NVIDIA's new AI cloud service offerings and research and development activities (Chunk b2592820-3a10-4979-9920-2b7bc25ec364).
+          - generic [ref=e40]:
+            - generic [ref=e41]: Sources
+            - button "NVIDIA Corporation (NVDA) 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS" [ref=e43]:
+              - generic [ref=e44]:
+                - generic [ref=e45]:
+                  - text: NVIDIA Corporation
+                  - generic [ref=e46]: (NVDA)
+                - generic [ref=e47]: 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS
+              - img [ref=e48]
+        - generic [ref=e57]: What is the weather forecast in Tokyo next week?
+      - button "Stop generating" [ref=e64]
+      - generic [ref=e52]:
+        - textbox "Ask about the filings…" [disabled] [ref=e53]
+        - button "Send" [disabled]

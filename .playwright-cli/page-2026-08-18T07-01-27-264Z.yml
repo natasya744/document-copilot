@@ -1,0 +1,28 @@
+- generic [ref=e19]:
+  - complementary [ref=e20]:
+    - generic [ref=e21]:
+      - heading "Document Copilot" [level=2] [ref=e22]
+      - paragraph [ref=e23]: SEC filing assistant
+    - button "New chat" [ref=e24]:
+      - img
+      - text: New chat
+    - generic [ref=e25]:
+      - heading "Conversations" [level=3] [ref=e26]
+      - generic [ref=e27]:
+        - link "New chat" [ref=e28] [cursor=pointer]:
+          - /url: /thread/66f8fb7c-2ea8-4887-a8af-a2bad105b1af
+        - link "gate test" [ref=e29] [cursor=pointer]:
+          - /url: /thread/ba9f3b80-55a2-48d3-848f-eda587ed864e
+        - link "New chat" [ref=e30] [cursor=pointer]:
+          - /url: /thread/ec849deb-92ad-4b3d-90b4-8aada55d50f2
+        - link "New chat" [ref=e31] [cursor=pointer]:
+          - /url: /thread/fa612c8b-dc7c-4749-aa0f-bcc5e7994b93
+    - generic [ref=e32]:
+      - generic "putrianastasya744@gmail.com" [ref=e33]
+      - button "Sign out" [ref=e34]:
+        - img
+        - generic [ref=e35]: Sign out
+  - main [ref=e36]:
+    - generic [ref=e37]:
+      - heading "Start a conversation" [level=1] [ref=e38]
+      - paragraph [ref=e39]: Choose an existing thread from the sidebar or create a new chat to ask questions about SEC filings.

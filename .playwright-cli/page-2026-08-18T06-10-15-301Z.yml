@@ -1,0 +1,15 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Document Copilot" [level=2] [ref=e6]
+      - paragraph [ref=e7]: SEC filing assistant
+    - button "New chat" [ref=e8]:
+      - img
+      - text: New chat
+    - heading "Conversations" [level=3] [ref=e10]
+    - generic [ref=e16]:
+      - generic "putrianastasya744@gmail.com" [ref=e17]
+      - button "Sign out" [ref=e18]:
+        - img
+        - generic [ref=e19]: Sign out
+  - main [ref=e20]

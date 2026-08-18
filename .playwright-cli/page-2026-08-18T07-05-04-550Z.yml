@@ -1,0 +1,66 @@
+- generic [ref=e19]:
+  - complementary [ref=e20]:
+    - generic [ref=e21]:
+      - heading "Document Copilot" [level=2] [ref=e22]
+      - paragraph [ref=e23]: SEC filing assistant
+    - button "New chat" [ref=e24]:
+      - img
+      - text: New chat
+    - generic [ref=e25]:
+      - heading "Conversations" [level=3] [ref=e26]
+      - generic [ref=e27]:
+        - link "New chat" [ref=e28] [cursor=pointer]:
+          - /url: /thread/66f8fb7c-2ea8-4887-a8af-a2bad105b1af
+        - link "gate test" [ref=e29] [cursor=pointer]:
+          - /url: /thread/ba9f3b80-55a2-48d3-848f-eda587ed864e
+        - link "New chat" [ref=e30] [cursor=pointer]:
+          - /url: /thread/ec849deb-92ad-4b3d-90b4-8aada55d50f2
+        - link "New chat" [ref=e31] [cursor=pointer]:
+          - /url: /thread/fa612c8b-dc7c-4749-aa0f-bcc5e7994b93
+    - generic [ref=e32]:
+      - generic "putrianastasya744@gmail.com" [ref=e33]
+      - button "Sign out" [ref=e34]:
+        - img
+        - generic [ref=e35]: Sign out
+  - main [ref=e36]:
+    - generic [ref=e40]:
+      - heading "New chat" [level=1] [ref=e42]
+      - generic [ref=e44]:
+        - generic [ref=e47]: How did NVIDIA data center revenue grow in fiscal year 2023?
+        - generic [ref=e49]:
+          - generic [ref=e50]: NVIDIA's data center revenue for fiscal year 2023 increased by 41% from a year ago. This growth was led by strong demand from hyperscale customers and supported by major purchases from several cloud service provider partners as part of multi-year agreements for NVIDIA's new AI cloud service offerings and research and development activities (10-K filing, Fiscal Year 2023, Management's Discussion and Analysis of Financial Condition and Results of Operations) [chunk b2592820-3a10-4979-9920-2b7bc25ec364].
+          - generic [ref=e51]:
+            - generic [ref=e52]: Sources
+            - button "NVIDIA Corporation (NVDA) 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS" [ref=e54]:
+              - generic [ref=e55]:
+                - generic [ref=e56]:
+                  - text: NVIDIA Corporation
+                  - generic [ref=e57]: (NVDA)
+                - generic [ref=e58]: 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS
+              - img [ref=e59]
+        - generic [ref=e63]: What is the weather forecast in Tokyo next week?
+        - generic [ref=e66]: I couldn't find passages in the filings relevant enough to answer that question. Try asking about a specific company, filing, or topic covered in the corpus.
+        - generic [ref=e69]: What are the main risk factors mentioned by NVIDIA in their filings?
+        - generic [ref=e71]:
+          - generic [ref=e72]: "NVIDIA outlines several key risk factors in their filings, which include: 1. **Technological and Competitive Risks:** NVIDIA faces intense competition and rapid technological change, which require them to anticipate features and functions that customers demand. Failure to do so could lead to losing market share. 2. **Product Risks:** Defects in products could lead to significant expenses, damaged reputation, and loss of market share. This includes security vulnerabilities, unsatisfactory performance, or failure to meet specifications. 3. **Regulatory and Legal Risks:** The company is subject to various laws and regulations, including new export control restrictions announced by the U.S. government. Compliance with these regulations can impact operations and financial results. 4. **Supply Chain and Demand Risks:** Mismatches between supply and demand can lead to inventory issues, affecting financial outcomes. Disruptions in the supply chain due to natural disasters or geopolitical factors can impact product availability. 5. **Climate Change and Environmental Risks:** Climate change may adversely impact their business, affecting water and energy availability, and may lead to increased regulations and operational costs. 6. **Cybersecurity Risks:** Increased and sophisticated cyber-attacks can disrupt operations, damage reputation, and impact revenues. 7. **Acquisition and Investment Risks:** Challenges in integrating acquisitions and investments could impair growth and strategic objectives. Past regulatory challenges have impacted acquisition plans, such as the terminated Arm acquisition. These risk factors highlight the complexities and challenges NVIDIA faces across various aspects of their operations and strategic initiatives."
+          - generic [ref=e73]:
+            - generic [ref=e74]: Sources
+            - button "NVIDIA Corporation (NVDA) 10-K · Feb 26, 2021 · ITEM 1A. RISK FACTORS" [ref=e76]:
+              - generic [ref=e77]:
+                - generic [ref=e78]:
+                  - text: NVIDIA Corporation
+                  - generic [ref=e79]: (NVDA)
+                - generic [ref=e80]: 10-K · Feb 26, 2021 · ITEM 1A. RISK FACTORS
+              - img [ref=e81]
+            - button "NVIDIA Corporation (NVDA) 10-K · Mar 18, 2022 · ITEM 1A. RISK FACTORS" [ref=e84]:
+              - generic [ref=e85]:
+                - generic [ref=e86]:
+                  - text: NVIDIA Corporation
+                  - generic [ref=e87]: (NVDA)
+                - generic [ref=e88]: 10-K · Mar 18, 2022 · ITEM 1A. RISK FACTORS
+              - img [ref=e89]
+        - generic [ref=e98]: What does NVIDIA say about its gaming segment?
+      - button "Stop generating" [ref=e117]
+      - generic [ref=e93]:
+        - textbox "Ask about the filings…" [disabled] [ref=e94]
+        - button "Send" [disabled]

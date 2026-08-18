@@ -31,6 +31,9 @@ class SourcePassage:
     page: str | None
     section: str | None
     text: str
+    # Cosine similarity of the query to this chunk (semantic-search hits only;
+    # None for chunks surfaced purely by full-text search).
+    score: float | None = None
 
 
 @dataclass(frozen=True)

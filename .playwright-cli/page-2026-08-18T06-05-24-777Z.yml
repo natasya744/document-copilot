@@ -1,0 +1,17 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: Document Copilot
+    - generic [ref=e7]: Sign in with your Driftwood email.
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: Email
+        - textbox "Email" [ref=e12]:
+          - /placeholder: analyst@driftwoodcapital.com
+      - generic [ref=e13]:
+        - generic [ref=e14]: Password
+        - textbox "Password" [ref=e15]
+      - button "Sign in" [ref=e16]
+    - paragraph [ref=e17]:
+      - text: Don't have an account?
+      - button "Sign up" [ref=e18]

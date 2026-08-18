@@ -25,8 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.assistant.outputs import SourcePassage
 from app.database.engine import get_engine
 
-_SELECT = """
-    SELECT
+_COLUMNS = """
         c.id AS chunk_id,
         c.document_id,
         c.chunk_index,
@@ -38,9 +37,14 @@ _SELECT = """
         d.filing_type,
         d.filing_date,
         d.year
+"""
+
+_FROM_JOIN = """
     FROM document_chunks c
     JOIN source_documents d ON d.id = c.document_id
 """
+
+_SELECT = "SELECT" + _COLUMNS + _FROM_JOIN
 
 
 async def _rows(conn: AsyncConnection, sql: str, params: dict) -> list[dict]:
@@ -50,6 +54,7 @@ async def _rows(conn: AsyncConnection, sql: str, params: dict) -> list[dict]:
 
 def row_to_passage(row: dict) -> SourcePassage:
     """Map a query row (already joined to ``source_documents``) to a passage."""
+    distance = row.get("distance")
     return SourcePassage(
         chunk_id=row["chunk_id"],
         document_id=row["document_id"],
@@ -62,6 +67,7 @@ def row_to_passage(row: dict) -> SourcePassage:
         page=row["page"],
         section=row["section"],
         text=row["chunk_text"],
+        score=1 - distance if distance is not None else None,
     )
 
 
@@ -129,10 +135,18 @@ async def semantic_search(
     explicit ``::vector`` cast makes the coercion to the HNSW column type
     unambiguous.
     """
-    sql = _SELECT + """
+    sql = (
+        "SELECT"
+        + _COLUMNS
+        + """
+        , c.embedding <=> CAST(:query_embedding AS vector) AS distance
+        """
+        + _FROM_JOIN
+        + """
         ORDER BY c.embedding <=> CAST(:query_embedding AS vector)
         LIMIT :k
     """
+    )
     return await _rows(
         conn,
         sql,

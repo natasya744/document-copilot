@@ -1,0 +1,30 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Document Copilot" [level=2] [ref=e6]
+      - paragraph [ref=e7]: SEC filing assistant
+    - button "New chat" [ref=e8]:
+      - img
+      - text: New chat
+    - generic [ref=e9]:
+      - heading "Conversations" [level=3] [ref=e10]
+      - generic [ref=e11]:
+        - link "New chat" [ref=e78] [cursor=pointer]:
+          - /url: /thread/66f8fb7c-2ea8-4887-a8af-a2bad105b1af
+        - link "New chat" [ref=e27] [cursor=pointer]:
+          - /url: /thread/ec849deb-92ad-4b3d-90b4-8aada55d50f2
+        - link "New chat" [ref=e28] [cursor=pointer]:
+          - /url: /thread/fa612c8b-dc7c-4749-aa0f-bcc5e7994b93
+    - generic [ref=e16]:
+      - generic "putrianastasya744@gmail.com" [ref=e17]
+      - button "Sign out" [ref=e18]:
+        - img
+        - generic [ref=e19]: Sign out
+  - main [ref=e20]:
+    - generic [ref=e79]:
+      - heading "New chat" [level=1] [ref=e81]
+      - generic [ref=e99]: How did NVIDIA data center revenue grow in fiscal year 2023?
+      - button "Stop generating" [ref=e106]
+      - generic [ref=e94]:
+        - textbox "Ask about the filings…" [disabled] [ref=e95]
+        - button "Send" [disabled]

@@ -15,7 +15,7 @@ DOCUMENT_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 ASSISTANT_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 
 
-def _passage() -> SourcePassage:
+def _passage(*, score: float | None = None) -> SourcePassage:
     return SourcePassage(
         chunk_id=CHUNK_1,
         document_id=DOCUMENT_ID,
@@ -28,6 +28,7 @@ def _passage() -> SourcePassage:
         page="p. 10",
         section="Risk Factors",
         text="Retrieved passage text.",
+        score=score,
     )
 
 
@@ -232,3 +233,130 @@ async def test_no_incoming_messages_emits_error():
 
     assert _events(lines) == [{"type": "error", "errorText": "Request contains no messages"}]
     create_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_incoming_duplicate_of_history_is_sliced():
+    agent = FakeAgent(
+        GroundedAnswer(answer="ok.", citations=(Citation.from_passage(_passage()),))
+    )
+    retriever = FakeRetriever([_passage()])
+    create_message = AsyncMock(return_value=_assistant_row())
+    prior = [
+        {"role": "user", "content": "old q", "sequence_number": 1},
+        {"role": "assistant", "content": "old a", "sequence_number": 2},
+    ]
+    incoming = [
+        TurnMessage(role="user", content="old q"),
+        TurnMessage(role="assistant", content="old a"),
+        TurnMessage(role="user", content="new q"),
+    ]
+
+    with (
+        patch("app.chat.orchestrator.chats.create_message", create_message),
+        patch("app.chat.orchestrator.chats.create_citation", AsyncMock(return_value={})),
+    ):
+        await _collect(
+            run_turn(
+                client=None,
+                thread_id=THREAD_ID,
+                incoming=incoming,
+                prior_messages=prior,
+                retriever=retriever,
+                agent=agent,
+            )
+        )
+
+    conversation = agent.calls[0][0]
+    assert [message.content for message in conversation] == ["old q", "old a", "new q"]
+
+
+@pytest.mark.asyncio
+async def test_upstream_failure_streams_inband_error_and_persists_nothing():
+    class ExplodingAgent(FakeAgent):
+        async def generate(self, conversation, passages):
+            raise RuntimeError("upstream boom")
+
+    retriever = FakeRetriever([_passage()])
+    create_message = AsyncMock(return_value=_assistant_row())
+
+    with (
+        patch("app.chat.orchestrator.chats.create_message", create_message),
+        patch("app.chat.orchestrator.chats.create_citation", AsyncMock(return_value={})),
+    ):
+        lines = await _collect(
+            run_turn(
+                client=None,
+                thread_id=THREAD_ID,
+                incoming=[TurnMessage(role="user", content="What is the risk?")],
+                prior_messages=[],
+                retriever=retriever,
+                agent=ExplodingAgent(GroundedAnswer(answer="nope")),
+            )
+        )
+
+    assert create_message.await_count == 0
+    events = _events(lines)
+    assert len(events) == 1
+    assert events[0]["type"] == "error"
+    assert "try again" in events[0]["errorText"]
+
+
+@pytest.mark.asyncio
+async def test_low_relevance_refuses_without_calling_agent():
+    agent = FakeAgent(GroundedAnswer(answer="should not be used"))
+    retriever = FakeRetriever([_passage(score=0.2)])
+    create_message = AsyncMock(return_value=_assistant_row())
+    create_citation = AsyncMock()
+
+    with (
+        patch("app.chat.orchestrator.chats.create_message", create_message),
+        patch("app.chat.orchestrator.chats.create_citation", create_citation),
+    ):
+        lines = await _collect(
+            run_turn(
+                client=None,
+                thread_id=THREAD_ID,
+                incoming=[TurnMessage(role="user", content="weather in tokyo?")],
+                prior_messages=[],
+                retriever=retriever,
+                agent=agent,
+            )
+        )
+
+    assert agent.calls == []
+    assistant_kwargs = create_message.await_args_list[1].kwargs
+    assert assistant_kwargs["role"] == "assistant"
+    assert "couldn't find passages" in assistant_kwargs["content"]
+    assert assistant_kwargs["message_json"]["parts"][0]["type"] == "text"
+    create_citation.assert_not_awaited()
+    events = _events(lines)
+    assert events[0]["type"] == "start"
+    assert events[-1]["type"] == "finish"
+    assert not any(e["type"] == "data-citations" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_high_relevance_still_calls_agent():
+    agent = FakeAgent(
+        GroundedAnswer(answer="Grounded.", citations=(Citation.from_passage(_passage()),))
+    )
+    retriever = FakeRetriever([_passage(score=0.9)])
+    create_message = AsyncMock(return_value=_assistant_row())
+
+    with (
+        patch("app.chat.orchestrator.chats.create_message", create_message),
+        patch("app.chat.orchestrator.chats.create_citation", AsyncMock(return_value={})),
+    ):
+        await _collect(
+            run_turn(
+                client=None,
+                thread_id=THREAD_ID,
+                incoming=[TurnMessage(role="user", content="nvidia revenue?")],
+                prior_messages=[],
+                retriever=retriever,
+                agent=agent,
+            )
+        )
+
+    assert len(agent.calls) == 1

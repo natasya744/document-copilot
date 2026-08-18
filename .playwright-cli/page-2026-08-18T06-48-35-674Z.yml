@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Document Copilot" [level=2] [ref=e6]
+      - paragraph [ref=e7]: SEC filing assistant
+    - button "New chat" [ref=e8]:
+      - img
+      - text: New chat
+    - generic [ref=e9]:
+      - heading "Conversations" [level=3] [ref=e10]
+      - generic [ref=e11]:
+        - link "New chat" [ref=e78] [cursor=pointer]:
+          - /url: /thread/66f8fb7c-2ea8-4887-a8af-a2bad105b1af
+        - link "New chat" [ref=e27] [cursor=pointer]:
+          - /url: /thread/ec849deb-92ad-4b3d-90b4-8aada55d50f2
+        - link "New chat" [ref=e28] [cursor=pointer]:
+          - /url: /thread/fa612c8b-dc7c-4749-aa0f-bcc5e7994b93
+    - generic [ref=e16]:
+      - generic "putrianastasya744@gmail.com" [ref=e17]
+      - button "Sign out" [ref=e18]:
+        - img
+        - generic [ref=e19]: Sign out
+  - main [ref=e20]:
+    - generic [ref=e79]:
+      - heading "New chat" [level=1] [ref=e81]
+      - generic [ref=e83]:
+        - generic [ref=e99]: How did NVIDIA data center revenue grow in fiscal year 2023?
+        - generic [ref=e108]:
+          - generic [ref=e109]: NVIDIA's data center revenue for fiscal year 2023 increased by 41% from a year ago. This growth was led by strong demand from hyperscale customers and supported by major purchases from several cloud service provider partners as part of multi-year agreements for NVIDIA's new AI cloud service offerings and research and development activities (10-K filing, Fiscal Year 2023, Management's Discussion and Analysis of Financial Condition and Results of Operations) [chunk b2592820-3a10-4979-9920-2b7bc25ec364].
+          - generic [ref=e110]:
+            - generic [ref=e111]: Sources
+            - button "NVIDIA Corporation (NVDA) 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS" [ref=e113]:
+              - generic [ref=e114]:
+                - generic [ref=e115]:
+                  - text: NVIDIA Corporation
+                  - generic [ref=e116]: (NVDA)
+                - generic [ref=e117]: 10-K · Feb 24, 2023 · ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATIONS
+              - img [ref=e118]
+        - generic [ref=e122]: What is the weather forecast in Tokyo next week?
+        - generic [ref=e125]: I couldn't find passages in the filings relevant enough to answer that question. Try asking about a specific company, filing, or topic covered in the corpus.
+      - generic [ref=e94]:
+        - textbox "Ask about the filings…" [ref=e95]
+        - button "Send" [disabled]

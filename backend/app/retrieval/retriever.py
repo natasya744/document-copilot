@@ -23,7 +23,9 @@ from app.retrieval.fusion import reciprocal_rank_fusion
 from app.retrieval.queries import keyword_search, row_to_passage, semantic_search
 
 CANDIDATE_K = 50
-TOP_K = 10
+# The corpus chunks are ~1.5k words each; keep the prompt under the LLM's
+# per-request token ceiling by only surfacing the strongest passages.
+TOP_K = 5
 
 EmbedFunc = Callable[[str], Awaitable[list[float]]]
 SemanticFunc = Callable[[AsyncConnection, list[float], int], Awaitable[list[dict]]]
@@ -61,7 +63,9 @@ class HybridRetriever:
                 [row["chunk_id"] for row in keyword],
             ]
         )
-        rows_by_chunk = {row["chunk_id"]: row for row in (*semantic, *keyword)}
+        rows_by_chunk = {row["chunk_id"]: row for row in semantic}
+        for row in keyword:
+            rows_by_chunk.setdefault(row["chunk_id"], row)
         return [
             row_to_passage(rows_by_chunk[chunk_id])
             for chunk_id, _ in fused[: self._top_k]

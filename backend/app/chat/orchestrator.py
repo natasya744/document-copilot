@@ -14,6 +14,7 @@ hybrid retriever (`app/retrieval`) and the PydanticAI agent
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from typing import Protocol
@@ -24,9 +25,45 @@ from app.assistant.agent import DocumentCopilotAgent
 from app.assistant.outputs import GroundedAnswer, SourcePassage
 from app.chat.messages import ChatInputError, TurnMessage, to_ui_message_json
 from app.chat.streaming import answer_events, error_event
+from app.config import settings
 from app.database import chats
 from app.grounding.validator import GroundingError, validate_grounding
 from app.retrieval.retriever import HybridRetriever
+
+logger = logging.getLogger(__name__)
+
+# Shown when retrieval finds nothing relevant enough to ground an answer.
+_RELEVANCE_REFUSAL = (
+    "I couldn't find passages in the filings relevant enough to answer that "
+    "question. Try asking about a specific company, filing, or topic covered in "
+    "the corpus."
+)
+
+# Keep the agent's conversation window bounded so long threads stay within the
+# model's context and per-minute token limits.
+_MAX_HISTORY_MESSAGES = 6
+
+
+def _best_relevance(passages: Sequence[SourcePassage]) -> float | None:
+    """Highest semantic similarity among the passages, or None when unscored."""
+    scored = [p.score for p in passages if p.score is not None]
+    return max(scored) if scored else None
+
+
+def _new_messages(
+    prior: Sequence[TurnMessage], incoming: Sequence[TurnMessage]
+) -> list[TurnMessage]:
+    """Drop the prefix of ``incoming`` that duplicates persisted history.
+
+    The AI SDK transport resends the full message list every turn while the
+    backend also prepends the persisted history, so the overlap would double
+    the conversation context. Only the trailing messages the client added are
+    new.
+    """
+    incoming_list = list(incoming)
+    if len(incoming_list) > len(prior) and incoming_list[: len(prior)] == list(prior):
+        return incoming_list[len(prior) :]
+    return incoming_list
 
 
 class Retriever(Protocol):
@@ -69,7 +106,8 @@ def _last_user_text(messages: Sequence[TurnMessage]) -> str:
 
 def _prior_turns(prior_messages: Sequence[dict]) -> list[TurnMessage]:
     return [
-        TurnMessage(role=row["role"], content=row["content"]) for row in prior_messages
+        TurnMessage(role=row["role"], content=row["content"])
+        for row in prior_messages[-_MAX_HISTORY_MESSAGES:]
     ]
 
 
@@ -85,33 +123,50 @@ async def run_turn(
     """Run a full turn and yield AI SDK stream events (SSE-encoded JSON).
 
     On retrieval/generation/grounding failure a single in-band error event is
-    emitted and nothing is written. Exceptions that are not the agent's
-    grounding contract propagate to the API layer.
+    emitted and nothing is written.
     """
     if not incoming:
         yield error_event("Request contains no messages")
         return
 
     try:
-        query = _last_user_text(incoming)
-        conversation = _prior_turns(prior_messages) + list(incoming)
+        prior = _prior_turns(prior_messages)
+        turn = _new_messages(prior, incoming)
+        if not turn:
+            yield error_event("Request contains no messages")
+            return
+        query = _last_user_text(turn)
+        conversation = prior + turn
         passages = await retriever.retrieve(query)
-        answer, evidence = await agent.generate(conversation, passages)
-        answer = validate_grounding(answer, evidence)
+        best = _best_relevance(passages)
+        if best is not None and best < settings.min_relevance_score:
+            answer = GroundedAnswer(answer=_RELEVANCE_REFUSAL, insufficient_evidence=True)
+            evidence = []
+        else:
+            answer, evidence = await agent.generate(conversation, passages)
+            answer = validate_grounding(answer, evidence)
     except (ChatInputError, GroundingError) as exc:
         yield error_event(exc.args[0])
+        return
+    except Exception as exc:
+        # Boundary failure from retrieval or the LLM: stream a friendly in-band
+        # error instead of aborting the stream and leaving the client guessing.
+        logger.warning("chat turn failed", exc_info=exc)
+        yield error_event(
+            "The assistant hit a problem while answering. Please try again."
+        )
         return
 
     next_sequence = (
         prior_messages[-1]["sequence_number"] + 1 if prior_messages else 1
     )
 
-    if incoming[-1].role == "user":
+    if turn[-1].role == "user":
         await chats.create_message(
             client,
             thread_id=thread_id,
             role="user",
-            content=incoming[-1].content,
+            content=turn[-1].content,
             sequence_number=next_sequence,
         )
         next_sequence += 1

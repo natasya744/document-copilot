@@ -28,7 +28,7 @@ async def create_thread(client: AsyncClient, *, user_id: uuid.UUID, title: str) 
     """Insert a thread owned by ``user_id`` and return the created row."""
     result = await (
         client.table("chat_threads")
-        .insert({"user_id": str(user_id), "title": title})
+        .insert({"id": str(uuid.uuid4()), "user_id": str(user_id), "title": title})
         .execute()
     )
     return result.data[0]

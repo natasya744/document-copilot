@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     openai_embedding_max_tokens: int = 2000
     # Chat model used by the grounded-answer agent.
     openai_chat_model: str = "gpt-4o"
+    # Below this best cosine similarity, the retrieved passages are too weak to
+    # answer the question and the turn refuses deterministically (no LLM call).
+    min_relevance_score: float = 0.45
 
     # Comma-separated browser origins allowed to call the API (CORS).
     # NoDecode keeps the env value as a string so the validator can split it.
