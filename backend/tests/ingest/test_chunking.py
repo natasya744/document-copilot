@@ -2,6 +2,8 @@ from ingest.chunking import (
     build_section_paths,
     chunk_document,
     markdown_to_document,
+    normalize_tables,
+    prepare_markdown,
     promote_sec_headings,
 )
 
@@ -34,9 +36,48 @@ def test_promote_sec_headings_marks_part_and_item_lines():
     assert "# ITEM 1A. RISK FACTORS" in promoted
 
 
+def test_promote_sec_headings_is_case_insensitive():
+    md = "Part I\n\nItem 1. Business\n\nText.\n"
+    promoted = promote_sec_headings(md)
+    assert "# Part I" in promoted
+    assert "# Item 1. Business" in promoted
+
+
 def test_promote_sec_headings_leaves_inline_references_alone():
     md = "Refer to Item 1A. Risk Factors for more.\n"
     assert promote_sec_headings(md) == md
+
+
+def test_normalize_tables_collapses_duplicate_cells():
+    md = (
+        "| Revenue | Revenue | Revenue | Revenue |\n"
+        "| -------- | -------- | -------- | -------- |\n"
+        "| 60,922 | 60,922 | 60,922 | 60,922 |\n"
+    )
+    normalized = normalize_tables(md)
+    assert "| Revenue |\n" in normalized
+    assert "| 60,922 |\n" in normalized
+
+
+def test_normalize_tables_preserves_distinct_values():
+    md = "| Metric | 2024 | 2023 |\n| - | - | - |\n| Revenue | 60,922 | 26,974 |\n"
+    normalized = normalize_tables(md)
+    assert "| Metric | 2024 | 2023 |" in normalized
+    assert "| Revenue | 60,922 | 26,974 |" in normalized
+
+
+def test_normalize_tables_leaves_non_table_lines_alone():
+    md = "Plain paragraph.\n\n| A | A |\n| - | - |\n"
+    normalized = normalize_tables(md)
+    assert normalized.startswith("Plain paragraph.\n\n")
+    assert "| A |\n" in normalized
+
+
+def test_prepare_markdown_applies_headings_and_table_cleanup():
+    md = "Part I\n\n| X | X | 1 |\n| - | - | - |\n"
+    prepared = prepare_markdown(md)
+    assert "# Part I" in prepared
+    assert "| X | 1 |" in prepared
 
 
 def test_markdown_to_document_parses_headings():

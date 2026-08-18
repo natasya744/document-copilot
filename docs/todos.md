@@ -22,12 +22,12 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 - [x] `app/main.py` — FastAPI entrypoint + router mounting
 - [x] `app/database/models.py` — SQLAlchemy models: `profiles`, `source_documents`, `document_chunks`, `chat_threads`, `chat_messages`, `message_citations`
 - [x] Alembic init + `env.py` wired to `app.config.settings` and models metadata
-- [] Initial migration — review and add explicit ops: `create extension vector`, `vector(1536)`, generated `tsvector`, HNSW + GIN indexes, RLS policies
-- [] Ingest: Markdown extraction from downloaded filing HTML → `source_documents`
-- [] Ingest: chunking with metadata (ticker, company, year, filing type, page/section, offsets)
-- [ ] Ingest: OpenAI embeddings → `document_chunks.embedding`
-- [] Ingest: writes to Supabase
-- [ ] Verify: run sample queries, confirm real chunks return with full metadata
+- [x] Initial migration — review and add explicit ops: `create extension vector`, `vector(1536)`, generated `tsvector`, HNSW + GIN indexes, RLS policies
+- [x] Ingest: Markdown extraction from downloaded filing HTML → `source_documents`
+- [x] Ingest: chunking with metadata (ticker, company, year, filing type, page/section, offsets)
+- [x] Ingest: OpenAI embeddings → `document_chunks.embedding`
+- [x] Ingest: writes to Supabase
+- [x] Verify: run sample queries, confirm real chunks return with full metadata
 
 ## Phase 2 — Auth & thread APIs (backend)
 
@@ -39,11 +39,11 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ## Phase 3 — Retrieval (backend, no LLM, fully unit-testable)
 
-- [ ] `app/retrieval/queries.py` — pgvector semantic query over `document_chunks`
-- [ ] `app/retrieval/queries.py` — Postgres full-text query over `search_vector`
-- [ ] `app/retrieval/fusion.py` — Reciprocal Rank Fusion
-- [ ] `app/retrieval/retriever.py` — query → `SourcePassage` list with citation metadata
-- [ ] Unit tests: retrieval + fusion (fast suite, no network/DB)
+- [x] `app/retrieval/queries.py` — pgvector semantic query over `document_chunks`
+- [x] `app/retrieval/queries.py` — Postgres full-text query over `search_vector`
+- [x] `app/retrieval/fusion.py` — Reciprocal Rank Fusion
+- [x] `app/retrieval/retriever.py` — query → `SourcePassage` list with citation metadata
+- [x] Unit tests: retrieval + fusion (fast suite, no network/DB)
 
 ## Phase 4 — Grounded chat (backend, the trust contract)
 
@@ -52,11 +52,11 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 - [x] `app/assistant/agent.py` — PydanticAI agent with typed deps + bounded tools (`search_filings`, `read_chunk`, `read_surrounding_chunks`)
 - [x] `app/assistant/instructions.md` — product contract: only from retrieved passages, cite everything, refuse unsupported, no stock picks
 - [x] `app/chat/messages.py` — AI SDK message wire-format conversion
-- [ x] `app/chat/streaming.py` — AI SDK-compatible streaming events (text deltas, structured citations, error events)
+- [x] `app/chat/streaming.py` — AI SDK-compatible streaming events (text deltas, structured citations, error events)
 - [x] `app/chat/orchestrator.py` — full turn lifecycle (auth → retrieve → generate → validate → persist)
 - [x] `POST /chat/stream` endpoint — `threadId` + AI SDK messages payload
 - [x] Persist user message, assistant message, citations only after a successful run
-- [] Unit tests: citation extraction + grounding enforcement (mock LLM, keep contract tested)
+- [x] Unit tests: citation extraction + grounding enforcement (mock LLM, keep contract tested)
 
 ## Phase 5 — Frontend chat experience
 

@@ -48,7 +48,7 @@ class FakeAgent:
 
     async def generate(self, conversation, passages):
         self.calls.append((conversation, passages))
-        return self.answer
+        return self.answer, passages
 
 
 def _assistant_row():

@@ -24,14 +24,38 @@ import tiktoken
 from docling.chunking import HierarchicalChunker, HybridChunker
 from docling.datamodel.base_models import DocumentStream, InputFormat
 from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker.hierarchical_chunker import (
+    ChunkingDocSerializer,
+    ChunkingSerializerProvider,
+)
 from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
+from docling_core.transforms.serializer.markdown import (
+    MarkdownParams,
+    MarkdownTableSerializer,
+)
 from docling_core.types.doc import DoclingDocument
 
 from app.config import settings
 
-_SEC_HEADER_RE = re.compile(r"(PART [IVX]+|ITEM \d+[A-Z]?\. .+)")
+_SEC_HEADER_RE = re.compile(r"(PART [IVX]+|ITEM \d+[A-Z]?\. .+)", re.IGNORECASE)
 
 _DOCUMENT_CONVERTER = DocumentConverter(allowed_formats=[InputFormat.MD])
+
+
+class MarkdownTableSerializerProvider(ChunkingSerializerProvider):
+    """Chunk tables as compact markdown instead of docling's flat cell dump.
+
+    SEC HTML tables store every merged cell expanded across many columns, so
+    the default table serializer emits lines of ``, = . , = .`` noise that an
+    LLM cannot parse. Rendering tables as markdown keeps them readable.
+    """
+
+    def get_serializer(self, doc):
+        return ChunkingDocSerializer(
+            doc=doc,
+            table_serializer=MarkdownTableSerializer(),
+            params=MarkdownParams(compact_tables=True),
+        )
 
 
 def promote_sec_headings(markdown: str) -> str:
@@ -44,6 +68,36 @@ def promote_sec_headings(markdown: str) -> str:
         else:
             lines.append(line)
     return "\n".join(lines)
+
+
+def _collapse_duplicate_cells(line: str) -> str:
+    """Drop adjacent duplicate cells in one markdown table row.
+
+    Docling's HTML conversion expands a single logical cell (e.g. ``Revenue``)
+    across as many columns as the merged region spans. Collapsing adjacent
+    identical cells restores the readable table while preserving every unique
+    value. No-op on rows with distinct cells.
+    """
+    cells = line.strip().split("|")
+    out = [cells[0]]
+    for cell in cells[1:]:
+        if out and out[-1] == cell:
+            continue
+        out.append(cell)
+    return "|".join(out)
+
+
+def normalize_tables(markdown: str) -> str:
+    """Collapse duplicated cells across all markdown table rows."""
+    return "\n".join(
+        _collapse_duplicate_cells(line) if line.lstrip().startswith("|") else line
+        for line in markdown.split("\n")
+    )
+
+
+def prepare_markdown(markdown: str) -> str:
+    """Full markdown prep before Docling parsing: sections + table cleanup."""
+    return normalize_tables(promote_sec_headings(markdown))
 
 
 def markdown_to_document(markdown: str, filename: str) -> DoclingDocument:
@@ -64,7 +118,10 @@ def build_tokenizer() -> OpenAITokenizer:
 
 
 def build_hybrid_chunker(tokenizer: OpenAITokenizer) -> HybridChunker:
-    return HybridChunker(tokenizer=tokenizer)
+    return HybridChunker(
+        tokenizer=tokenizer,
+        serializer_provider=MarkdownTableSerializerProvider(),
+    )
 
 
 def build_section_paths(doc: DoclingDocument) -> dict[str, str]:

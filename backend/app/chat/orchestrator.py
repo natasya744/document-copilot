@@ -6,9 +6,10 @@ grounding contract, and — only after every step succeeds — persist the user
 message, assistant message, and citations. The assistant run never writes
 partial state.
 
-Retrieval and the LLM agent are injected as Protocols so the turn logic is
-unit-testable without a database or LLM; the concrete implementations land with
-Phase 3 (retrieval) and the PydanticAI agent.
+Retrieval and the LLM agent are injected behind Protocols so the turn logic is
+unit-testable without a database or LLM; the concrete implementations are the
+hybrid retriever (`app/retrieval`) and the PydanticAI agent
+(`app/assistant/agent`).
 """
 
 from __future__ import annotations
@@ -19,12 +20,13 @@ from typing import Protocol
 
 from supabase import AsyncClient
 
+from app.assistant.agent import DocumentCopilotAgent
 from app.assistant.outputs import GroundedAnswer, SourcePassage
-from app.assistant.stub import StubAgent, StubRetriever
 from app.chat.messages import ChatInputError, TurnMessage, to_ui_message_json
 from app.chat.streaming import answer_events, error_event
 from app.database import chats
 from app.grounding.validator import GroundingError, validate_grounding
+from app.retrieval.retriever import HybridRetriever
 
 
 class Retriever(Protocol):
@@ -34,23 +36,28 @@ class Retriever(Protocol):
 
 
 class AnswerAgent(Protocol):
-    """Generates a grounded answer from a conversation and retrieved passages."""
+    """Generates a grounded answer from a conversation and retrieved passages.
+
+    Returns the answer together with every passage it grounded on (the initial
+    retrieval plus any passages its tools surfaced), so the orchestrator can
+    validate citations against exactly what the model saw.
+    """
 
     async def generate(
         self,
         conversation: Sequence[TurnMessage],
         passages: Sequence[SourcePassage],
-    ) -> GroundedAnswer: ...
+    ) -> tuple[GroundedAnswer, Sequence[SourcePassage]]: ...
 
 
 def default_retriever() -> Retriever:
-    """Temporary seam — Phase 5 stub; replaced by `app/retrieval` when Phase 3 lands."""
-    return StubRetriever()
+    """Real hybrid retriever (Phase 3)."""
+    return HybridRetriever()
 
 
-def default_agent() -> AnswerAgent:
-    """Temporary seam — Phase 5 stub; replaced by the PydanticAI agent (Phase 4)."""
-    return StubAgent()
+def default_agent(retriever: Retriever | None = None) -> AnswerAgent:
+    """Real PydanticAI grounded-answer agent (Phase 4)."""
+    return DocumentCopilotAgent(retriever=retriever or default_retriever())
 
 
 def _last_user_text(messages: Sequence[TurnMessage]) -> str:
@@ -89,8 +96,8 @@ async def run_turn(
         query = _last_user_text(incoming)
         conversation = _prior_turns(prior_messages) + list(incoming)
         passages = await retriever.retrieve(query)
-        answer = await agent.generate(conversation, passages)
-        answer = validate_grounding(answer, passages)
+        answer, evidence = await agent.generate(conversation, passages)
+        answer = validate_grounding(answer, evidence)
     except (ChatInputError, GroundingError) as exc:
         yield error_event(exc.args[0])
         return

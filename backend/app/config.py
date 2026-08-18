@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # Chunk budget in tokens for the hybrid chunker. Kept far below the
     # embedding model's 8191-token input window; larger chunks hurt retrieval.
     openai_embedding_max_tokens: int = 2000
+    # Chat model used by the grounded-answer agent.
+    openai_chat_model: str = "gpt-4o"
 
     # Comma-separated browser origins allowed to call the API (CORS).
     # NoDecode keeps the env value as a string so the validator can split it.

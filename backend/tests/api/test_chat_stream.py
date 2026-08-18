@@ -35,7 +35,7 @@ class FakeAgent:
         self.answer = answer
 
     async def generate(self, conversation, passages):
-        return self.answer
+        return self.answer, passages
 
 
 def _thread_row(*, owner: uuid.UUID = USER_ID) -> dict:
@@ -94,7 +94,9 @@ def _patch_factories(*, retriever=None, agent=None):
     if retriever is not None:
         patches.append(patch("app.api.chat_stream.default_retriever", lambda: retriever))
     if agent is not None:
-        patches.append(patch("app.api.chat_stream.default_agent", lambda: agent))
+        patches.append(
+            patch("app.api.chat_stream.default_agent", lambda retriever=None: agent)
+        )
     return patches
 
 

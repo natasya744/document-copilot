@@ -49,12 +49,13 @@ async def chat_stream(
     prior_messages = await chats.list_messages(client, body.threadId)
 
     incoming = from_ui_messages(body.messages)
+    retriever = default_retriever()
     events = run_turn(
         client=client,
         thread_id=body.threadId,
         incoming=incoming,
         prior_messages=prior_messages,
-        retriever=default_retriever(),
-        agent=default_agent(),
+        retriever=retriever,
+        agent=default_agent(retriever),
     )
     return StreamingResponse(events, media_type="text/event-stream")

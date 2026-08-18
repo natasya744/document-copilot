@@ -20,6 +20,7 @@ Run with the backend venv:
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 
 from app.database.supabase import get_admin_client
@@ -29,7 +30,7 @@ from ingest.chunking import (
     build_tokenizer,
     chunk_document,
     markdown_to_document,
-    promote_sec_headings,
+    prepare_markdown,
 )
 from ingest.embeddings import Embedder
 
@@ -88,6 +89,19 @@ def chunk_rows(document: dict, chunks) -> list[dict]:
     return rows
 
 
+def insert_batch(client, rows: list[dict], attempts: int = 3) -> None:
+    """Insert a batch with a few retries for transient network failures."""
+    for attempt in range(attempts):
+        try:
+            client.table("document_chunks").insert(rows).execute()
+            return
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            log.warning("Insert failed, retrying (%d/%d)", attempt + 1, attempts)
+            time.sleep(2 * (attempt + 1))
+
+
 def ingest() -> None:
     client = get_admin_client()
     tokenizer = build_tokenizer()
@@ -97,7 +111,7 @@ def ingest() -> None:
     documents = source_documents(client)
     total_chunks = 0
     for document in documents:
-        markdown = promote_sec_headings(document["markdown_content"])
+        markdown = prepare_markdown(document["markdown_content"])
         doc = markdown_to_document(markdown, document["accession_number"])
         section_paths = build_section_paths(doc)
         chunks = chunk_document(doc, chunker, section_paths)
@@ -111,8 +125,8 @@ def ingest() -> None:
             row["embedding"] = embedding
 
         deleted = delete_existing_chunks(client, document["id"])
-        for start in range(0, len(rows), 100):
-            client.table("document_chunks").insert(rows[start : start + 100]).execute()
+        for start in range(0, len(rows), 50):
+            insert_batch(client, rows[start : start + 50])
 
         total_chunks += len(rows)
         log.info(

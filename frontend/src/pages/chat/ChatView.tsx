@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
-import { Link } from 'react-router-dom'
 
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageItem } from '@/components/chat/MessageItem'
@@ -65,48 +64,46 @@ export function ChatView({
   const showThinking = busy && !lastIsEmptyAssistant
 
   return (
-    <div className="mx-auto flex h-screen w-full max-w-2xl flex-col p-6">
-      <header className="mb-4 flex items-center justify-between gap-4">
-        <Link
-          to="/"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          ← Chats
-        </Link>
-        <h1 className="truncate text-lg font-semibold">{thread.title}</h1>
-        <span className="w-10 shrink-0" />
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+      {/* Header bar */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6">
+        <h1 className="truncate text-sm font-semibold text-foreground">{thread.title}</h1>
       </header>
 
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4">
-        {messages.length === 0 && !busy ? (
-          <div className="flex h-full flex-col items-start justify-center gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">Ask about the filings</h2>
-              <p className="text-sm text-muted-foreground">
-                Every answer cites the source filing, page, and passage.
-              </p>
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto flex h-full max-w-3xl flex-col space-y-4">
+          {messages.length === 0 && !busy ? (
+            <div className="flex flex-1 flex-col items-start justify-center gap-4 py-8">
+              <div>
+                <h2 className="text-lg font-semibold">Ask about the filings</h2>
+                <p className="text-sm text-muted-foreground">
+                  Every answer cites the source filing, page, and passage.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {SUGGESTIONS.map((question) => (
+                  <Button
+                    key={question}
+                    variant="outline"
+                    className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
+                    onClick={() => void sendMessage({ text: question })}
+                  >
+                    {question}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-col gap-2">
-              {SUGGESTIONS.map((question) => (
-                <Button
-                  key={question}
-                  variant="outline"
-                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
-                  onClick={() => void sendMessage({ text: question })}
-                >
-                  {question}
-                </Button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => <MessageItem key={message.id} message={message} />)
-        )}
-        {showThinking ? <ThinkingIndicator /> : null}
+          ) : (
+            messages.map((message) => <MessageItem key={message.id} message={message} />)
+          )}
+          {showThinking ? <ThinkingIndicator /> : null}
+        </div>
       </div>
 
+      {/* Error notification */}
       {error ? (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+        <div className="mx-auto mb-3 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
           <span className="min-w-0 truncate">{error.message}</span>
           <div className="flex shrink-0 gap-2">
             <Button variant="outline" size="sm" onClick={clearError}>
@@ -119,15 +116,21 @@ export function ChatView({
         </div>
       ) : null}
 
+      {/* Stop button */}
       {busy ? (
-        <div className="mb-3 flex justify-center">
+        <div className="mb-2 flex justify-center">
           <Button variant="ghost" size="sm" onClick={stop}>
             Stop generating
           </Button>
         </div>
       ) : null}
 
-      <ChatInput onSend={(text) => void sendMessage({ text })} disabled={busy} />
+      {/* Input container */}
+      <div className="border-t border-border/40 p-4">
+        <div className="mx-auto max-w-3xl">
+          <ChatInput onSend={(text) => void sendMessage({ text })} disabled={busy} />
+        </div>
+      </div>
     </div>
   )
 }

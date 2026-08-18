@@ -39,14 +39,14 @@ export function ChatPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex h-full w-full items-center justify-center p-6">
         <div className="text-center">
           <p className="text-sm text-destructive">{error}</p>
           <Link
             to="/"
             className="mt-2 inline-block text-sm text-primary underline-offset-4 hover:underline"
           >
-            Back to chats
+            Start a new conversation
           </Link>
         </div>
       </div>
@@ -55,7 +55,7 @@ export function ChatPage() {
 
   if (thread === null || messages === null) {
     return (
-      <div className="mx-auto flex h-screen w-full max-w-2xl flex-col p-6">
+      <div className="mx-auto flex h-full w-full max-w-3xl flex-col p-6">
         <Skeleton className="mb-6 h-8 w-40" />
         <div className="flex-1 space-y-4">
           <Skeleton className="h-16 w-3/4" />
