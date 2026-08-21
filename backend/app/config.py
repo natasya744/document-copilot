@@ -46,6 +46,28 @@ class Settings(BaseSettings):
     # answer the question and the turn refuses deterministically (no LLM call).
     min_relevance_score: float = 0.45
 
+    # Agent run guards (PydanticAI UsageLimits). Tool calls re-run hybrid
+    # retrieval and can quickly accumulate many ~2k-token passages into the
+    # conversation, blowing past the model's per-minute token budget. These
+    # bound the agent so a multi-hop question degrades to a clean stop instead
+    # of an upstream 429.
+    agent_tool_calls_limit: int = 16
+    # Input tokens accumulated across requests in one run (prompt + tool
+    # outputs + history). pydantic-ai raises before sending a request that
+    # would exceed it.
+    agent_max_input_tokens: int = 24000
+
+    # Retrieval
+    # Candidates fetched per retriever (semantic + keyword) before RRF fusion.
+    retrieval_candidate_k: int = 50
+    # Fused passages surfaced to the LLM. Chunks are ~1.5k words each; kept
+    # small to stay under the model's per-request token ceiling.
+    retrieval_top_k: int = 5
+    # RRF smoothing constant (Cormack et al., SIGIR 2009).
+    retrieval_rrf_k: int = 60
+    # Max keyword terms extracted from a query for the full-text search leg.
+    retrieval_keyword_max_terms: int = 5
+
     # Comma-separated browser origins allowed to call the API (CORS).
     # NoDecode keeps the env value as a string so the validator can split it.
     allowed_origins: Annotated[list[str], NoDecode] = []

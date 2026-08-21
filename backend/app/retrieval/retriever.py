@@ -12,20 +12,17 @@ so the unit tests never touch the engine or OpenAI.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from app.assistant.outputs import SourcePassage
+from app.config import settings
 from app.database.engine import get_engine
 from app.retrieval.embedding import embed_query
 from app.retrieval.fusion import reciprocal_rank_fusion
 from app.retrieval.queries import keyword_search, row_to_passage, semantic_search
-
-CANDIDATE_K = 50
-# The corpus chunks are ~1.5k words each; keep the prompt under the LLM's
-# per-request token ceiling by only surfacing the strongest passages.
-TOP_K = 5
 
 EmbedFunc = Callable[[str], Awaitable[list[float]]]
 SemanticFunc = Callable[[AsyncConnection, list[float], int], Awaitable[list[dict]]]
@@ -38,8 +35,8 @@ class HybridRetriever:
     def __init__(
         self,
         *,
-        candidate_k: int = CANDIDATE_K,
-        top_k: int = TOP_K,
+        candidate_k: int = settings.retrieval_candidate_k,
+        top_k: int = settings.retrieval_top_k,
         embed: EmbedFunc = embed_query,
         semantic_fn: SemanticFunc = semantic_search,
         keyword_fn: KeywordFunc = keyword_search,
@@ -51,11 +48,21 @@ class HybridRetriever:
         self._keyword = keyword_fn
 
     async def retrieve(self, query: str) -> list[SourcePassage]:
-        """Return up to ``top_k`` source passages ranked by RRF."""
-        query_embedding = await self._embed(query)
+        """Return up to ``top_k`` source passages ranked by RRF.
+
+        The keyword query only needs the raw text, so it runs concurrently with
+        the embedding call (network I/O) instead of waiting on it; the semantic
+        query starts once the embedding is ready.
+        """
+        async def _keyword() -> list[dict]:
+            async with get_engine().connect() as conn:
+                return await self._keyword(conn, query, self._candidate_k)
+
+        query_embedding, keyword = await asyncio.gather(
+            self._embed(query), _keyword()
+        )
         async with get_engine().connect() as conn:
             semantic = await self._semantic(conn, query_embedding, self._candidate_k)
-            keyword = await self._keyword(conn, query, self._candidate_k)
 
         fused = reciprocal_rank_fusion(
             [

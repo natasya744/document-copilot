@@ -47,7 +47,7 @@ class FakeAgent:
         self.answer = answer
         self.calls = []
 
-    async def generate(self, conversation, passages):
+    async def generate(self, conversation, passages, *, on_status=None):
         self.calls.append((conversation, passages))
         return self.answer, passages
 
@@ -62,6 +62,20 @@ async def _collect(async_gen):
 
 def _events(lines):
     return [json.loads(line[len("data: ") :].strip()) for line in lines]
+
+
+def _non_status(lines):
+    """Events excluding the transient ``data-status`` pipeline statuses."""
+    return [event for event in _events(lines) if event["type"] != "data-status"]
+
+
+def _status_stages(lines):
+    """The pipeline stages seen in the streamed status events, in order."""
+    return [
+        event["data"]["stage"]
+        for event in _events(lines)
+        if event["type"] == "data-status"
+    ]
 
 
 @pytest.mark.asyncio
@@ -108,12 +122,57 @@ async def test_happy_path_persists_user_assistant_and_citations():
     assert citation_kwargs["document_id"] == DOCUMENT_ID
     assert citation_kwargs["metadata_"]["ticker"] == "NVDA"
 
-    events = _events(lines)
+    events = _non_status(lines)
     assert events[0]["type"] == "start"
     assert events[0]["messageId"] == str(ASSISTANT_ID)
     assert events[-1]["type"] == "finish"
     deltas = [e["delta"] for e in events if e["type"] == "text-delta"]
     assert "".join(deltas) == "Grounded answer."
+    assert _status_stages(lines) == [
+        "retrieving",
+        "retrieved",
+        "generating",
+        "validating",
+        "saving",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_agent_tool_statuses_stream_before_answer():
+    def emit_statuses(answer):
+        async def generate(self, conversation, passages, *, on_status=None):
+            assert on_status is not None
+            on_status("tool", "Searching the filing corpus…")
+            on_status("tool", "Reading a source passage…")
+            return answer, passages
+
+        return generate
+
+    agent = type("StatusAgent", (), {"generate": emit_statuses(GroundedAnswer(
+        answer="Grounded answer.",
+        citations=(Citation.from_passage(_passage()),),
+    ))})()
+
+    with (
+        patch("app.chat.orchestrator.chats.create_message", AsyncMock(return_value=_assistant_row())),
+        patch("app.chat.orchestrator.chats.create_citation", AsyncMock(return_value={})),
+    ):
+        lines = await _collect(
+            run_turn(
+                client=None,
+                thread_id=THREAD_ID,
+                incoming=[TurnMessage(role="user", content="q")],
+                prior_messages=[],
+                retriever=FakeRetriever([_passage()]),
+                agent=agent,
+            )
+        )
+
+    statuses = [e for e in _events(lines) if e["type"] == "data-status"]
+    labels = [e["data"]["label"] for e in statuses]
+    assert labels[3] == "Searching the filing corpus…"
+    assert labels[4] == "Reading a source passage…"
+    assert all(e["transient"] is True for e in statuses)
 
 
 @pytest.mark.asyncio
@@ -206,7 +265,7 @@ async def test_grounding_failure_emits_error_and_persists_nothing():
             )
         )
 
-    assert _events(lines) == [
+    assert _non_status(lines) == [
         {"type": "error", "errorText": "Answer cites a passage that was not retrieved"}
     ]
     create_message.assert_not_awaited()
@@ -296,7 +355,7 @@ async def test_upstream_failure_streams_inband_error_and_persists_nothing():
         )
 
     assert create_message.await_count == 0
-    events = _events(lines)
+    events = _non_status(lines)
     assert len(events) == 1
     assert events[0]["type"] == "error"
     assert "try again" in events[0]["errorText"]
@@ -330,10 +389,11 @@ async def test_low_relevance_refuses_without_calling_agent():
     assert "couldn't find passages" in assistant_kwargs["content"]
     assert assistant_kwargs["message_json"]["parts"][0]["type"] == "text"
     create_citation.assert_not_awaited()
-    events = _events(lines)
+    events = _non_status(lines)
     assert events[0]["type"] == "start"
     assert events[-1]["type"] == "finish"
     assert not any(e["type"] == "data-citations" for e in events)
+    assert _status_stages(lines) == ["retrieving", "refusing", "saving"]
 
 
 @pytest.mark.asyncio

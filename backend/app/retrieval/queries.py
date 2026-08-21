@@ -23,7 +23,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from app.assistant.outputs import SourcePassage
+from app.config import settings
 from app.database.engine import get_engine
+from app.retrieval.keywords import extract_keywords
 
 _COLUMNS = """
         c.id AS chunk_id,
@@ -160,10 +162,22 @@ async def semantic_search(
 async def keyword_search(conn: AsyncConnection, query: str, k: int) -> list[dict]:
     """Top-``k`` chunks by full-text rank against ``query``.
 
-    ``plainto_tsquery`` treats user input as plain terms (no operator
-    injection), and ``'english'`` matches the config used to generate
-    ``search_vector``.
+    ``extract_keywords`` narrows the user query to meaningful content terms
+    (see ``app/retrieval/keywords.py``); they are OR-combined with
+    ``to_tsquery`` for recall, since the semantic leg already covers precision.
+    ``'english'`` matches the config used to generate ``search_vector``. When
+    nothing meaningful survives extraction, falls back to ``plainto_tsquery``
+    over the raw query.
     """
+    terms = extract_keywords(query, max_terms=settings.retrieval_keyword_max_terms)
+    if terms:
+        sql = _SELECT + """
+            , ts_rank(c.search_vector, to_tsquery('english', :query)) AS rank
+            WHERE c.search_vector @@ to_tsquery('english', :query)
+            ORDER BY rank DESC
+            LIMIT :k
+        """
+        return await _rows(conn, sql, {"query": "|".join(terms), "k": k})
     sql = _SELECT + """
         , ts_rank(c.search_vector, plainto_tsquery('english', :query)) AS rank
         WHERE c.search_vector @@ plainto_tsquery('english', :query)

@@ -62,20 +62,25 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 - [x] `src/lib/env.ts` (validate at boot), `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
 - [x] Auth pages — email login with Driftwood email
-- [ ] Thread list / history page — loads via FastAPI
-- [ ] Chat page wired to `/chat/stream` via AI SDK `useChat` + bearer token
-- [ ] Message rendering with streaming state
-- [ ] Citations + source passage panel — company, filing, date, page/section, excerpt
-- [ ] Empty states, loading, and friendly error rendering
-- [ ] `pnpm tsc --noEmit` and `pnpm lint` clean
+- [x] Thread list / history page — loads via FastAPI (`Sidebar.tsx` + `useThreads`)
+- [x] Chat page wired to `/chat/stream` via AI SDK `useChat` + bearer token (`ChatView.tsx`)
+- [x] Message rendering with streaming state (`MessageItem` + `ThinkingIndicator`)
+- [x] Citations + source passage panel — company, filing, date, page/section, excerpt (`SourcePassagePanel.tsx`)
+- [x] Empty states, loading, and friendly error rendering
+- [x] `pnpm tsc --noEmit` and `pnpm lint` clean (verified: tsc passes, lint warnings only)
 
 ## Phase 6 — Quality gate vs client brief
 
-- [ ] All 10 example brief questions answered with citations to filing + page + passage
-- [ ] Cross-year trend questions (Q1–Q5, Q8) supported by actual corpus data
-- [ ] Risk-factor comparisons (Q6, Q7) grounded in retrieved passages
-- [ ] Q10: bot refuses to infer beyond the filings where evidence is absent
-- [ ] Hallucination checks: out-of-corpus questions refuse cleanly instead of inventing
+- [x] `backend/scripts/quality_gate.py` CLI + `backend/app/quality_gate.py` harness runs the 10 brief questions + refusal probes through the real pipeline and reports pass/fail per check
+- [x] `backend/tests/integration/test_quality_gate.py` gate contract suite (`@pytest.mark.integration`)
+- [x] All 10 example brief questions answered with citations to filing + passage (page metadata is a corpus-wide gap — section-level citations for the pilot)
+- [x] Cross-year trend questions (Q1–Q5, Q8) supported by actual corpus data (spans years check)
+- [x] Risk-factor comparisons (Q6, Q7) grounded in retrieved passages (spans tickers check)
+- [x] Q10: bot refuses to infer beyond the filings where evidence is absent
+- [x] Hallucination checks: out-of-corpus probes (stock price, AMD, analyst opinions, Tesla estimates) refuse cleanly
+- [x] Frontend: live pipeline status (`data-status` SSE → `PipelineStatus` component) replaces the static thinking dots
+- [x] Frontend: empty-state suggestions now mirror the client brief questions
+- [x] Live gate run green (with per-question checks; report to `/tmp/gate-report*.md`)
 - [ ] Full pilot flow manually: sign in → ask → verify citation → history persists
 
 ## Phase 7 — Deploy

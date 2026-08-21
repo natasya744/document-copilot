@@ -14,9 +14,10 @@ hybrid retriever (`app/retrieval`) and the PydanticAI agent
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from typing import Protocol
 
 from supabase import AsyncClient
@@ -24,7 +25,7 @@ from supabase import AsyncClient
 from app.assistant.agent import DocumentCopilotAgent
 from app.assistant.outputs import GroundedAnswer, SourcePassage
 from app.chat.messages import ChatInputError, TurnMessage, to_ui_message_json
-from app.chat.streaming import answer_events, error_event
+from app.chat.streaming import answer_events, error_event, status_event
 from app.config import settings
 from app.database import chats
 from app.grounding.validator import GroundingError, validate_grounding
@@ -78,12 +79,17 @@ class AnswerAgent(Protocol):
     Returns the answer together with every passage it grounded on (the initial
     retrieval plus any passages its tools surfaced), so the orchestrator can
     validate citations against exactly what the model saw.
+
+    ``on_status`` receives ``(stage, label)`` pairs as the run progresses, so
+    the orchestrator can stream live progress to the client.
     """
 
     async def generate(
         self,
         conversation: Sequence[TurnMessage],
         passages: Sequence[SourcePassage],
+        *,
+        on_status: Callable[[str, str], None] | None = None,
     ) -> tuple[GroundedAnswer, Sequence[SourcePassage]]: ...
 
 
@@ -111,6 +117,29 @@ def _prior_turns(prior_messages: Sequence[dict]) -> list[TurnMessage]:
     ]
 
 
+async def _drain_statuses(
+    task: asyncio.Task[tuple[GroundedAnswer, Sequence[SourcePassage]]],
+    queue: asyncio.Queue[str],
+) -> AsyncIterator[str]:
+    """Yield status events from ``queue`` while ``task`` runs, then finish.
+
+    The agent pushes status events into ``queue`` from its PydanticAI event
+    stream (synchronously, via ``put_nowait``); this drains them as SSE frames
+    while the answer task runs, so tool progress reaches the client live.
+    """
+    while True:
+        if task.done() and queue.empty():
+            return
+        getter = asyncio.create_task(queue.get())
+        done, _ = await asyncio.wait(
+            {task, getter}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if getter in done and not getter.cancelled():
+            yield getter.result()
+        else:
+            getter.cancel()
+
+
 async def run_turn(
     *,
     client: AsyncClient,
@@ -122,7 +151,9 @@ async def run_turn(
 ) -> AsyncIterator[str]:
     """Run a full turn and yield AI SDK stream events (SSE-encoded JSON).
 
-    On retrieval/generation/grounding failure a single in-band error event is
+    Pipeline progress is streamed as transient ``data-status`` events between
+    each stage, and the agent's tool calls are surfaced live while it runs. On
+    retrieval/generation/grounding failure a single in-band error event is
     emitted and nothing is written.
     """
     if not incoming:
@@ -137,13 +168,33 @@ async def run_turn(
             return
         query = _last_user_text(turn)
         conversation = prior + turn
+
+        yield status_event("retrieving", "Searching the filing corpus…")
         passages = await retriever.retrieve(query)
         best = _best_relevance(passages)
         if best is not None and best < settings.min_relevance_score:
+            yield status_event("refusing", "No relevant passages found — refusing")
             answer = GroundedAnswer(answer=_RELEVANCE_REFUSAL, insufficient_evidence=True)
             evidence = []
         else:
-            answer, evidence = await agent.generate(conversation, passages)
+            yield status_event("retrieved", f"Found {len(passages)} relevant passages")
+            yield status_event("generating", "Drafting a grounded answer…")
+            status_queue: asyncio.Queue[str] = asyncio.Queue()
+
+            async def _run_agent() -> tuple[GroundedAnswer, Sequence[SourcePassage]]:
+                return await agent.generate(
+                    conversation,
+                    passages,
+                    on_status=lambda stage, label: status_queue.put_nowait(
+                        status_event(stage, label)
+                    ),
+                )
+
+            answer_task = asyncio.create_task(_run_agent())
+            async for event in _drain_statuses(answer_task, status_queue):
+                yield event
+            answer, evidence = answer_task.result()
+            yield status_event("validating", "Verifying citations…")
             answer = validate_grounding(answer, evidence)
     except (ChatInputError, GroundingError) as exc:
         yield error_event(exc.args[0])
@@ -157,6 +208,7 @@ async def run_turn(
         )
         return
 
+    yield status_event("saving", "Saving to history…")
     next_sequence = (
         prior_messages[-1]["sequence_number"] + 1 if prior_messages else 1
     )

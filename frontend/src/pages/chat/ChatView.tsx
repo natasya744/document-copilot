@@ -1,19 +1,21 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageItem } from '@/components/chat/MessageItem'
-import { ThinkingIndicator } from '@/components/chat/ThinkingIndicator'
+import { PipelineStatus } from '@/components/chat/PipelineStatus'
 import { Button } from '@/components/ui/button'
 import type { ChatMessage, Thread } from '@/lib/api'
 import { env } from '@/lib/env'
+import { statusLabelFromData } from '@/lib/status'
 import { getAccessToken } from '@/lib/supabase'
 
 const SUGGESTIONS = [
-  'What are the main risk factors for the last three filings?',
-  'How did revenue trend across the years?',
-  'What changed in the latest annual report vs the prior one?',
+  'How did Apple\u2019s revenue mix across iPhone, Services, Mac, iPad, and Wearables change from 2021\u20132025?',
+  'How did Amazon\u2019s AWS operating income compare with its North America and International segments?',
+  'Which of the five companies changed AI or cloud infrastructure risk-factor language between 2021 and 2025?',
+  'Compare capital expenditures and purchase commitments across Microsoft, Alphabet, Amazon, and NVIDIA.',
 ]
 
 function toUIMessage(message: ChatMessage): UIMessage {
@@ -55,13 +57,22 @@ export function ChatView({
     id: thread.id,
     messages: initialMessages.map(toUIMessage),
     transport,
+    onData: (data) => {
+      const label = statusLabelFromData(data)
+      if (label) setStatusLabel(label)
+    },
   })
+
+  useEffect(() => {
+    setStatusLabel(null)
+  }, [thread.id])
 
   const busy = status === 'submitted' || status === 'streaming'
   const lastMessage = messages[messages.length - 1]
-  const lastIsEmptyAssistant =
-    lastMessage?.role === 'assistant' && messageText(lastMessage).length === 0
-  const showThinking = busy && !lastIsEmptyAssistant
+  const hasStreamedText =
+    lastMessage?.role === 'assistant' && messageText(lastMessage).length > 0
+  const showStatus = busy && !hasStreamedText
+  const [statusLabel, setStatusLabel] = useState<string | null>(null)
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
@@ -78,7 +89,7 @@ export function ChatView({
               <div>
                 <h2 className="text-lg font-semibold">Ask about the filings</h2>
                 <p className="text-sm text-muted-foreground">
-                  Every answer cites the source filing, page, and passage.
+                  Every answer cites the source filing, section, and passage.
                 </p>
               </div>
               <div className="flex flex-col gap-2">
@@ -97,7 +108,7 @@ export function ChatView({
           ) : (
             messages.map((message) => <MessageItem key={message.id} message={message} />)
           )}
-          {showThinking ? <ThinkingIndicator /> : null}
+          {showStatus ? <PipelineStatus label={statusLabel ?? undefined} /> : null}
         </div>
       </div>
 

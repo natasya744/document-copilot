@@ -7,8 +7,8 @@ JSON payload must match one of the `UIMessageChunk` variants (see
 `frontend/node_modules/ai/dist/index.js` → `uiMessageChunkSchema`).
 
 Only the chunk types this backend emits are produced here: `start`,
-`text-start`/`text-delta`/`text-end`, a custom `data-citations` part, `finish`,
-and `error` for in-band failures.
+`text-start`/`text-delta`/`text-end`, custom `data-citations` and
+`data-status` parts, `finish`, and `error` for in-band failures.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from app.assistant.outputs import GroundedAnswer
 
 _TEXT_PART_ID = "text-0"
 _CITATIONS_PART_ID = "citations-0"
+_STATUS_PART_ID = "status-0"
 _DELTA_SIZE = 128
 
 
@@ -30,6 +31,23 @@ def _event(payload: dict) -> str:
 def error_event(detail: str) -> str:
     """An in-band error event; the client surfaces ``errorText`` to the user."""
     return _event({"type": "error", "errorText": detail})
+
+
+def status_event(stage: str, label: str) -> str:
+    """A transient pipeline-status event streamed while the answer is in flight.
+
+    ``transient: true`` keeps it out of ``message.parts``: the AI SDK fires the
+    client's ``onData`` callback for it but never persists or rehydrates it, so
+    status labels are purely live UX and never pollute chat history.
+    """
+    return _event(
+        {
+            "type": "data-status",
+            "id": _STATUS_PART_ID,
+            "transient": True,
+            "data": {"stage": stage, "label": label},
+        }
+    )
 
 
 def answer_events(answer: GroundedAnswer, message_id: str) -> Iterable[str]:

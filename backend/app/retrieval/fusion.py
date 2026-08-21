@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-K_RRF = 60
+from app.config import settings
 
 
 def reciprocal_rank_fusion(
-    rankings: list[list[str]], k: int = K_RRF
+    rankings: list[list[str]], k: int = settings.retrieval_rrf_k
 ) -> list[tuple[str, float]]:
     """Fuse ranked lists of chunk ids into one score-ordered list.
 

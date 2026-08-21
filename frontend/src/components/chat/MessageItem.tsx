@@ -3,7 +3,6 @@ import type { UIMessage } from 'ai'
 import { getCitations } from '@/lib/citations'
 import { cn } from '@/lib/utils'
 import { SourcePassagePanel } from './SourcePassagePanel'
-import { ThinkingIndicator } from './ThinkingIndicator'
 
 function messageText(message: UIMessage): string {
   return message.parts
@@ -18,9 +17,9 @@ export function MessageItem({ message }: { message: UIMessage }) {
   const text = messageText(message)
   const citations = getCitations(message)
 
-  if (!isUser && text.trim().length === 0 && citations.length === 0) {
-    return <ThinkingIndicator />
-  }
+  // The empty placeholder assistant message is handled by the live pipeline
+  // status in the chat view, not here.
+  if (!isUser && text.trim().length === 0) return null
 
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>

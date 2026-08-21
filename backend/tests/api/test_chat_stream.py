@@ -34,7 +34,7 @@ class FakeAgent:
     def __init__(self, answer):
         self.answer = answer
 
-    async def generate(self, conversation, passages):
+    async def generate(self, conversation, passages, *, on_status=None):
         return self.answer, passages
 
 
@@ -123,6 +123,10 @@ def _read_events(response) -> list[dict]:
     return [json.loads(line[len("data: ") :]) for line in lines if line.strip()]
 
 
+def _non_status(events: list[dict]) -> list[dict]:
+    return [event for event in events if event["type"] != "data-status"]
+
+
 @contextmanager
 def _stream_session(payload, *, retriever=None, agent=None):
     """Stream a request with persistence mocked; yields the response."""
@@ -176,7 +180,7 @@ def test_stream_success(authed):
         _stream_payload(), retriever=FakeRetriever([_passage()]), agent=agent
     ) as response:
         assert response.status_code == 200
-        events = _read_events(response)
+        events = _non_status(_read_events(response))
 
     assert events[0]["type"] == "start"
     assert events[0]["messageId"] == str(ASSISTANT_ID)
@@ -195,4 +199,4 @@ def test_stream_grounding_failure_returns_error_event(authed):
         assert response.status_code == 200
         events = _read_events(response)
 
-    assert events == [{"type": "error", "errorText": "Answer has no citations"}]
+    assert _non_status(events) == [{"type": "error", "errorText": "Answer has no citations"}]

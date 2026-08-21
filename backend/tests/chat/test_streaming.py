@@ -3,7 +3,7 @@ import uuid
 from datetime import date
 
 from app.assistant.outputs import Citation, GroundedAnswer
-from app.chat.streaming import answer_events, error_event
+from app.chat.streaming import answer_events, error_event, status_event
 
 MESSAGE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
@@ -71,3 +71,16 @@ def test_error_event_shape():
     event = error_event("Something went wrong")
     parsed = _parse([event])
     assert parsed == [{"type": "error", "errorText": "Something went wrong"}]
+
+
+def test_status_event_is_transient_data_part():
+    event = status_event("retrieving", "Searching the filing corpus…")
+    parsed = _parse([event])
+    assert parsed == [
+        {
+            "type": "data-status",
+            "id": "status-0",
+            "transient": True,
+            "data": {"stage": "retrieving", "label": "Searching the filing corpus…"},
+        }
+    ]
