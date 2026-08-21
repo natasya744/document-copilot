@@ -1,39 +1,35 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, type UIMessage } from 'ai'
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, type UIMessage } from "ai"
+import { ArrowDown, RotateCcw, XCircle } from "lucide-react"
 
-import { ChatInput } from '@/components/chat/ChatInput'
-import { MessageItem } from '@/components/chat/MessageItem'
-import { PipelineStatus } from '@/components/chat/PipelineStatus'
-import { Button } from '@/components/ui/button'
-import type { ChatMessage, Thread } from '@/lib/api'
-import { env } from '@/lib/env'
-import { statusLabelFromData } from '@/lib/status'
-import { getAccessToken } from '@/lib/supabase'
-
-const SUGGESTIONS = [
-  'How did Apple\u2019s revenue mix across iPhone, Services, Mac, iPad, and Wearables change from 2021\u20132025?',
-  'How did Amazon\u2019s AWS operating income compare with its North America and International segments?',
-  'Which of the five companies changed AI or cloud infrastructure risk-factor language between 2021 and 2025?',
-  'Compare capital expenditures and purchase commitments across Microsoft, Alphabet, Amazon, and NVIDIA.',
-]
+import { ChatHeader } from "@/components/chat/ChatHeader"
+import { ChatInput } from "@/components/chat/ChatInput"
+import { EmptyChatState } from "@/components/chat/EmptyChatState"
+import { MessageItem } from "@/components/chat/MessageItem"
+import { PipelineStatus } from "@/components/chat/PipelineStatus"
+import { Button } from "@/components/ui/button"
+import type { ChatMessage, Thread } from "@/lib/api"
+import { env } from "@/lib/env"
+import { statusLabelFromData } from "@/lib/status"
+import { getAccessToken } from "@/lib/supabase"
 
 function toUIMessage(message: ChatMessage): UIMessage {
   const parts = message.parts?.length
-    ? (message.parts as unknown as UIMessage['parts'])
-    : ([{ type: 'text' as const, text: message.content }] as UIMessage['parts'])
+    ? (message.parts as unknown as UIMessage["parts"])
+    : ([{ type: "text" as const, text: message.content }] as UIMessage["parts"])
   return { id: message.id, role: message.role, parts }
 }
 
 function messageText(message: UIMessage): string {
   return message.parts
-    .filter((part) => part.type === 'text')
+    .filter((part) => part.type === "text")
     .map((part) => part.text)
-    .join('')
+    .join("")
     .trim()
 }
 
-/** Wires AI SDK `useChat` to the backend `/chat/stream` endpoint. */
+/** Enhanced ChatView orchestrating AI SDK useChat, citations, and streaming status. */
 export function ChatView({
   thread,
   initialMessages,
@@ -50,7 +46,7 @@ export function ChatView({
         }),
         body: { threadId: thread.id },
       }),
-    [thread.id],
+    [thread.id]
   )
 
   const { messages, sendMessage, status, error, stop, clearError, regenerate } = useChat({
@@ -63,83 +59,122 @@ export function ChatView({
     },
   })
 
+  const [statusLabel, setStatusLabel] = useState<string | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showScrollBottom, setShowScrollBottom] = useState(false)
+
   useEffect(() => {
     setStatusLabel(null)
   }, [thread.id])
 
-  const busy = status === 'submitted' || status === 'streaming'
+  const busy = status === "submitted" || status === "streaming"
   const lastMessage = messages[messages.length - 1]
   const hasStreamedText =
-    lastMessage?.role === 'assistant' && messageText(lastMessage).length > 0
+    lastMessage?.role === "assistant" && messageText(lastMessage).length > 0
   const showStatus = busy && !hasStreamedText
-  const [statusLabel, setStatusLabel] = useState<string | null>(null)
+
+  // Handle auto-scrolling
+  useEffect(() => {
+    if (!scrollContainerRef.current) return
+    const el = scrollContainerRef.current
+    const isScrolledToBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (isScrolledToBottom || busy) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [messages, showStatus, busy])
+
+  function handleScroll() {
+    if (!scrollContainerRef.current) return
+    const el = scrollContainerRef.current
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+    setShowScrollBottom(!isNearBottom && messages.length > 0)
+  }
+
+  function scrollToBottom() {
+    if (!scrollContainerRef.current) return
+    scrollContainerRef.current.scrollTo({
+      top: scrollContainerRef.current.scrollHeight,
+      behavior: "smooth",
+    })
+  }
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
       {/* Header bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6">
-        <h1 className="truncate text-sm font-semibold text-foreground">{thread.title}</h1>
-      </header>
+      <ChatHeader title={thread.title} />
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto flex h-full max-w-3xl flex-col space-y-4">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="relative flex-1 overflow-y-auto px-4 sm:px-8 py-4"
+      >
+        <div className="mx-auto flex min-h-full max-w-3xl flex-col">
           {messages.length === 0 && !busy ? (
-            <div className="flex flex-1 flex-col items-start justify-center gap-4 py-8">
-              <div>
-                <h2 className="text-lg font-semibold">Ask about the filings</h2>
-                <p className="text-sm text-muted-foreground">
-                  Every answer cites the source filing, section, and passage.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                {SUGGESTIONS.map((question) => (
-                  <Button
-                    key={question}
-                    variant="outline"
-                    className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-sm"
-                    onClick={() => void sendMessage({ text: question })}
-                  >
-                    {question}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <EmptyChatState
+              onSelectSuggestion={(question) => void sendMessage({ text: question })}
+            />
           ) : (
-            messages.map((message) => <MessageItem key={message.id} message={message} />)
+            <div className="flex-1 space-y-1 pb-4">
+              {messages.map((message) => (
+                <MessageItem key={message.id} message={message} />
+              ))}
+              {showStatus ? <PipelineStatus label={statusLabel ?? undefined} /> : null}
+            </div>
           )}
-          {showStatus ? <PipelineStatus label={statusLabel ?? undefined} /> : null}
         </div>
+
+        {/* Scroll to bottom button */}
+        {showScrollBottom && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-8 z-20 flex size-8 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-xs hover:bg-muted transition-all cursor-pointer"
+          >
+            <ArrowDown className="size-4" />
+            <span className="sr-only">Scroll to bottom</span>
+          </button>
+        )}
       </div>
 
       {/* Error notification */}
       {error ? (
-        <div className="mx-auto mb-3 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
-          <span className="min-w-0 truncate">{error.message}</span>
-          <div className="flex shrink-0 gap-2">
-            <Button variant="outline" size="sm" onClick={clearError}>
+        <div className="mx-auto mb-2 flex w-full max-w-3xl items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-2 text-xs text-destructive">
+          <div className="flex items-center gap-2 min-w-0">
+            <XCircle className="size-4 shrink-0" />
+            <span className="truncate">{error.message}</span>
+          </div>
+          <div className="flex shrink-0 gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearError}
+              className="h-7 text-xs px-2.5"
+            >
               Dismiss
             </Button>
-            <Button variant="outline" size="sm" onClick={() => void regenerate()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void regenerate()}
+              className="h-7 text-xs px-2.5 gap-1"
+            >
+              <RotateCcw className="size-3" />
               Retry
             </Button>
           </div>
         </div>
       ) : null}
 
-      {/* Stop button */}
-      {busy ? (
-        <div className="mb-2 flex justify-center">
-          <Button variant="ghost" size="sm" onClick={stop}>
-            Stop generating
-          </Button>
-        </div>
-      ) : null}
-
-      {/* Input container */}
-      <div className="border-t border-border/40 p-4">
+      {/* Input Composer */}
+      <div className="border-t border-border/60 p-4 bg-background/80 backdrop-blur-xs">
         <div className="mx-auto max-w-3xl">
-          <ChatInput onSend={(text) => void sendMessage({ text })} disabled={busy} />
+          <ChatInput
+            onSend={(text) => void sendMessage({ text })}
+            onStop={stop}
+            disabled={busy}
+            busy={busy}
+          />
         </div>
       </div>
     </div>

@@ -70,13 +70,29 @@ class Settings(BaseSettings):
 
     # Comma-separated browser origins allowed to call the API (CORS).
     # NoDecode keeps the env value as a string so the validator can split it.
-    allowed_origins: Annotated[list[str], NoDecode] = []
+    allowed_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:3000",
+    ]
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def split_allowed_origins(cls, value: object) -> object:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+            return origins or [
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+            ]
         return value
 
 

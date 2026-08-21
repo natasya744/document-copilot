@@ -24,6 +24,7 @@ class UIMessage(BaseModel):
     id: str
     role: Literal["system", "user", "assistant", "tool"]
     parts: list[dict] = []
+    content: str | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -48,12 +49,16 @@ def from_ui_message(message: UIMessage) -> TurnMessage:
     content = "".join(
         part["text"]
         for part in message.parts
-        if part.get("type") == "text" and isinstance(part.get("text"), str)
+        if isinstance(part, dict)
+        and part.get("type") == "text"
+        and isinstance(part.get("text"), str)
     )
-    if not content:
+    if not content and message.content:
+        content = message.content
+    if not content or not content.strip():
         raise ChatInputError("Message has no text content")
 
-    return TurnMessage(role=message.role, content=content)
+    return TurnMessage(role=message.role, content=content.strip())
 
 
 def from_ui_messages(messages: Sequence[UIMessage]) -> list[TurnMessage]:

@@ -58,4 +58,12 @@ async def chat_stream(
         retriever=retriever,
         agent=default_agent(retriever),
     )
-    return StreamingResponse(events, media_type="text/event-stream")
+    return StreamingResponse(
+        events,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
