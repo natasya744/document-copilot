@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api'
@@ -9,9 +9,23 @@ import { ChatView } from './ChatView'
 
 export function ChatPage() {
   const { threadId = '' } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [thread, setThread] = useState<Thread | null>(null)
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Capture once at mount: clearing the router state below must not lose the prompt.
+  const [pendingMessage] = useState(
+    () => (location.state as { pendingMessage?: string } | null)?.pendingMessage ?? undefined,
+  )
+
+  // One-shot prompt from NewChatPage: clear router state so a refresh doesn't re-send it.
+  useEffect(() => {
+    if (pendingMessage) {
+      navigate(location.pathname, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -66,5 +80,12 @@ export function ChatPage() {
     )
   }
 
-  return <ChatView key={threadId} thread={thread} initialMessages={messages} />
+  return (
+    <ChatView
+      key={threadId}
+      thread={thread}
+      initialMessages={messages}
+      initialPrompt={pendingMessage}
+    />
+  )
 }

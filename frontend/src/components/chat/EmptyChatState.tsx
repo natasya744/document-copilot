@@ -1,12 +1,9 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { ArrowUpRight, BarChart3, FileSpreadsheet, ShieldAlert, Sparkles, TrendingUp } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { useThreads } from "@/lib/threads"
 
 interface EmptyChatStateProps {
-  onSelectSuggestion?: (question: string) => void
+  onSelectSuggestion: (question: string) => void
 }
 
 const SUGGESTIONS = [
@@ -41,27 +38,6 @@ const SUGGESTIONS = [
 ]
 
 export function EmptyChatState({ onSelectSuggestion }: EmptyChatStateProps) {
-  const navigate = useNavigate()
-  const { createThread } = useThreads()
-  const [starting, setStarting] = useState(false)
-
-  async function handleSuggestion(question: string) {
-    if (onSelectSuggestion) {
-      onSelectSuggestion(question)
-      return
-    }
-
-    setStarting(true)
-    try {
-      const thread = await createThread(question.slice(0, 40) + "…")
-      navigate(`/thread/${thread.id}`)
-    } catch {
-      // Failed to create thread
-    } finally {
-      setStarting(false)
-    }
-  }
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-8 px-4 text-center select-none max-w-2xl mx-auto my-auto animate-in fade-in-50 duration-300">
       {/* Hero Badge & Icon */}
@@ -84,8 +60,7 @@ export function EmptyChatState({ onSelectSuggestion }: EmptyChatStateProps) {
             <button
               key={item.title}
               type="button"
-              disabled={starting}
-              onClick={() => void handleSuggestion(item.question)}
+              onClick={() => onSelectSuggestion(item.question)}
               className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-card/60 p-3.5 transition-all hover:border-foreground/40 hover:bg-muted/40 hover:shadow-xs cursor-pointer disabled:opacity-50"
             >
               <div>

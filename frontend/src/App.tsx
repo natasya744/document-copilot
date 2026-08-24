@@ -1,12 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { EmptyChatState } from '@/components/chat/EmptyChatState'
+
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthProvider } from '@/lib/auth'
 import { ThreadsProvider } from '@/lib/threads'
 import { LoginPage } from '@/pages/LoginPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
+import { NewChatPage } from '@/pages/chat/NewChatPage'
 
 export default function App() {
   return (
@@ -22,7 +23,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<EmptyChatState />} />
+              <Route index element={<NewChatPage />} />
               <Route path="/thread/:threadId" element={<ChatPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

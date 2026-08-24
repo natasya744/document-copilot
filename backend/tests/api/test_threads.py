@@ -36,6 +36,7 @@ def _thread_row(
         "title": "New chat",
         "created_at": TIMESTAMP,
         "updated_at": TIMESTAMP,
+        "first_message": "First user question here",
     }
 
 
@@ -65,6 +66,7 @@ def _expected_thread(*, thread_id: uuid.UUID = THREAD_ID) -> dict:
         "title": "New chat",
         "createdAt": TIMESTAMP,
         "updatedAt": TIMESTAMP,
+        "firstMessage": "First user question here",
     }
 
 
@@ -87,6 +89,7 @@ def _expected_message(*, thread_id: uuid.UUID = THREAD_ID) -> dict:
         ("post", "/threads"),
         ("get", f"/threads/{THREAD_ID}"),
         ("get", f"/threads/{THREAD_ID}/messages"),
+        ("delete", f"/threads/{THREAD_ID}"),
     ],
 )
 def test_thread_endpoints_require_auth(method, path):
@@ -99,7 +102,10 @@ def test_list_threads_returns_users_threads(authed):
         _thread_row(),
         _thread_row(thread_id=OTHER_THREAD_ID),
     ]
-    with _patch_chats("list_threads", rows) as mock_list:
+    with (
+        _patch_chats("purge_stale_empty_threads", None),
+        _patch_chats("list_threads", rows) as mock_list,
+    ):
         response = client.get("/threads")
     assert response.status_code == 200
     assert response.json() == [
@@ -107,6 +113,17 @@ def test_list_threads_returns_users_threads(authed):
         _expected_thread(thread_id=OTHER_THREAD_ID),
     ]
     mock_list.assert_awaited_once_with(ANY, USER_ID)
+
+
+def test_list_threads_purges_stale_empty_threads(authed):
+    with (
+        _patch_chats("purge_stale_empty_threads", None) as mock_purge,
+        _patch_chats("list_threads", []),
+    ):
+        response = client.get("/threads")
+    assert response.status_code == 200
+    assert response.json() == []
+    mock_purge.assert_awaited_once_with(ANY, USER_ID)
 
 
 def test_create_thread_success(authed):
@@ -220,3 +237,29 @@ def test_unhandled_error_is_500_json():
         app.dependency_overrides.clear()
     assert response.status_code == 500
     assert response.json() == {"detail": "Internal server error"}
+
+
+def test_delete_thread_success(authed):
+    with _patch_chats("get_thread", _thread_row()):
+        response = client.delete(f"/threads/{THREAD_ID}")
+    assert response.status_code == 204
+
+
+def test_delete_thread_missing_is_404(authed):
+    with _patch_chats("get_thread", None):
+        response = client.delete(f"/threads/{THREAD_ID}")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Thread not found"}
+
+
+def test_delete_thread_foreign_is_403(authed):
+    with _patch_chats("get_thread", _thread_row(owner=OTHER_USER_ID)):
+        response = client.delete(f"/threads/{THREAD_ID}")
+    assert response.status_code == 403
+    assert response.json() == {"detail": "You do not have access to this resource"}
+
+
+def test_delete_malformed_thread_id_is_422(authed):
+    response = client.delete("/threads/not-a-uuid")
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], str)

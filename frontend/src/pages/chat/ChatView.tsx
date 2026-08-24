@@ -33,9 +33,11 @@ function messageText(message: UIMessage): string {
 export function ChatView({
   thread,
   initialMessages,
+  initialPrompt,
 }: {
   thread: Thread
   initialMessages: ChatMessage[]
+  initialPrompt?: string
 }) {
   const transport = useMemo(
     () =>
@@ -62,6 +64,15 @@ export function ChatView({
   const [statusLabel, setStatusLabel] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
+  const sentInitialPrompt = useRef(false)
+
+  // Auto-send the prompt carried over from the new-chat screen (one-shot).
+  useEffect(() => {
+    if (!initialPrompt || sentInitialPrompt.current || messages.length > 0) return
+    sentInitialPrompt.current = true
+    void sendMessage({ text: initialPrompt })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt])
 
   useEffect(() => {
     setStatusLabel(null)

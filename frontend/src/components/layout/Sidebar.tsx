@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { PanelLeftClose, Plus, Search, Sparkles, SquarePen, X } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen, Plus, Search, Sparkles, SquarePen, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,21 +14,12 @@ import { UserMenu } from "./UserMenu"
 
 export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useLayout()
-  const { threads, loading, error, createThread, refreshThreads } = useThreads()
+  const { threads, loading, error, refreshThreads } = useThreads()
   const navigate = useNavigate()
-  const [isCreating, setIsCreating] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
-  async function handleNewChat() {
-    setIsCreating(true)
-    try {
-      const thread = await createThread("New chat")
-      navigate(`/thread/${thread.id}`)
-    } catch {
-      // Failed to create chat
-    } finally {
-      setIsCreating(false)
-    }
+  function handleNewChat() {
+    navigate("/")
   }
 
   return (
@@ -39,7 +30,7 @@ export function Sidebar() {
       )}
     >
       {/* Header & Branding */}
-      <div className="flex h-14 items-center justify-between px-3 border-b border-border/60">
+      <div className="relative flex h-14 items-center justify-between px-3 border-b border-border/60">
         {sidebarOpen ? (
           <div className="flex items-center gap-2 min-w-0">
             <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
@@ -60,22 +51,23 @@ export function Sidebar() {
           </div>
         )}
 
-        {sidebarOpen && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleSidebar}
-                className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <PanelLeftClose className="size-4" />
-                <span className="sr-only">Collapse sidebar (⌘B)</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Collapse sidebar (⌘B)</TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className={cn(
+                "size-7 text-muted-foreground hover:text-foreground cursor-pointer",
+                !sidebarOpen && "absolute -right-3 top-1/2 -translate-y-1/2 size-6 rounded-full border border-border/60 bg-background shadow-xs z-40"
+              )}
+            >
+              {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-3" />}
+              <span className="sr-only">{sidebarOpen ? "Collapse sidebar (⌘B)" : "Expand sidebar (⌘B)"}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{sidebarOpen ? "Collapse sidebar (⌘B)" : "Expand sidebar (⌘B)"}</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* New Chat & Search Controls */}
@@ -84,11 +76,10 @@ export function Sidebar() {
           <>
             <Button
               onClick={handleNewChat}
-              disabled={isCreating}
               className="w-full justify-start gap-2 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium text-xs h-9 px-3 shadow-xs cursor-pointer"
             >
               <SquarePen className="size-3.5" />
-              <span>{isCreating ? "Creating…" : "New chat"}</span>
+              <span>New chat</span>
             </Button>
 
             {/* Search Input */}
@@ -116,7 +107,6 @@ export function Sidebar() {
             <TooltipTrigger asChild>
               <Button
                 onClick={handleNewChat}
-                disabled={isCreating}
                 variant="outline"
                 size="icon"
                 className="size-10 mx-auto rounded-lg text-foreground hover:bg-muted cursor-pointer"

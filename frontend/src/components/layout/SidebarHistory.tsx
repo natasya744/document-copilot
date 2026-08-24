@@ -1,10 +1,19 @@
-import { useMemo } from "react"
-import { NavLink } from "react-router-dom"
-import { MessageSquare, RefreshCw } from "lucide-react"
+import { useMemo, useState } from "react"
+import { NavLink, useNavigate, useParams } from "react-router-dom"
+import { MessageSquare, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import type { Thread } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api"
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface SidebarHistoryProps {
   threads: Thread[] | null
@@ -53,6 +62,17 @@ function groupThreadsByDate(threads: Thread[]): GroupedThreads {
   return groups
 }
 
+function truncate(text: string, maxLength: number): string {
+  return text.length > maxLength ? text.slice(0, maxLength - 1) + "…" : text
+}
+
+function getThreadPreview(thread: Thread): string {
+  if (thread.firstMessage) {
+    return truncate(thread.firstMessage, 60)
+  }
+  return thread.title
+}
+
 export function SidebarHistory({
   threads,
   loading,
@@ -61,14 +81,40 @@ export function SidebarHistory({
   onRetry,
   collapsed = false,
 }: SidebarHistoryProps) {
+  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { threadId: activeThreadId } = useParams()
+
   const filteredThreads = useMemo(() => {
     if (!threads) return []
     const query = searchQuery.trim().toLowerCase()
     if (!query) return threads
-    return threads.filter((t) => t.title.toLowerCase().includes(query))
+    return threads.filter((t) => {
+      const preview = getThreadPreview(t).toLowerCase()
+      const title = t.title.toLowerCase()
+      return preview.includes(query) || title.includes(query)
+    })
   }, [threads, searchQuery])
 
   const groups = useMemo(() => groupThreadsByDate(filteredThreads), [filteredThreads])
+
+  async function handleDeleteThread(threadId: string) {
+    if (!window.confirm("Are you sure you want to permanently delete this conversation?")) {
+      return
+    }
+    setDeletingThreadId(threadId)
+    try {
+      await api.deleteThread(threadId)
+      if (threadId === activeThreadId) {
+        navigate("/")
+      }
+      onRetry()
+    } catch {
+      alert("Failed to delete conversation")
+    } finally {
+      setDeletingThreadId(null)
+    }
+  }
 
   if (error) {
     return (
@@ -125,36 +171,68 @@ export function SidebarHistory({
           )}
           <div className="space-y-0.5">
             {group.items.map((thread) => (
-              <NavLink
+              <div
                 key={thread.id}
-                to={`/thread/${thread.id}`}
-                title={thread.title}
-                className={({ isActive }) =>
-                  cn(
-                    "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-normal transition-all select-none cursor-pointer",
-                    isActive
-                      ? "bg-foreground text-background font-medium shadow-xs"
-                      : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                    collapsed && "justify-center px-2"
-                  )
-                }
+                className="group flex items-center gap-1.5 rounded-lg py-2 text-xs font-normal transition-all"
               >
-                {({ isActive }) => (
-                  <>
-                    <MessageSquare
-                      className={cn(
-                        "size-3.5 shrink-0 transition-colors",
-                        isActive
-                          ? "text-background"
-                          : "text-muted-foreground group-hover:text-foreground"
+                <NavLink
+                  to={`/thread/${thread.id}`}
+                  title={getThreadPreview(thread)}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-normal transition-all select-none cursor-pointer",
+                      isActive
+                        ? "bg-foreground text-background font-medium shadow-xs"
+                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+                      collapsed && "justify-center px-2"
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <MessageSquare
+                        className={cn(
+                          "size-3.5 shrink-0 transition-colors",
+                          isActive
+                            ? "text-background"
+                            : "text-muted-foreground group-hover:text-foreground"
+                        )}
+                      />
+                      {!collapsed && (
+                        <span className="truncate flex-1">{getThreadPreview(thread)}</span>
                       )}
-                    />
-                    {!collapsed && (
-                      <span className="truncate flex-1">{thread.title}</span>
-                    )}
-                  </>
+                    </>
+                  )}
+                </NavLink>
+                {!collapsed && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "size-7 p-0 text-muted-foreground hover:text-foreground transition-opacity",
+                          (deletingThreadId === thread.id || thread.id === activeThreadId) ||
+                            "opacity-0 group-hover:opacity-100"
+                        )}
+                        disabled={deletingThreadId === thread.id}
+                      >
+                        <MoreHorizontal className="size-3.5" />
+                        <span className="sr-only">Thread options</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="left" className="p-1">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteThread(thread.id)}
+                        disabled={deletingThreadId === thread.id}
+                        className="py-1.5 px-2 text-xs text-destructive hover:bg-muted/80"
+                      >
+                        <Trash2 className="size-2.5 mr-1" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
-              </NavLink>
+              </div>
             ))}
           </div>
         </div>

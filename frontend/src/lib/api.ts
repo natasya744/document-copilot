@@ -6,6 +6,7 @@ export interface Thread {
   title: string
   createdAt: string
   updatedAt: string
+  firstMessage: string | null
 }
 
 /** Wire format for a citation attached to an assistant answer. */
@@ -52,6 +53,11 @@ export const api = {
     request<Thread>('/threads', {
       method: 'POST',
       body: JSON.stringify({ title }),
+    }),
+
+  deleteThread: (threadId: string) =>
+    request<void>(`/threads/${threadId}`, {
+      method: 'DELETE',
     }),
 
   getThread: (threadId: string) => request<Thread>(`/threads/${threadId}`),

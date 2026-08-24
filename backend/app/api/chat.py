@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from supabase import AsyncClient
 
@@ -34,6 +34,7 @@ class ThreadOut(BaseModel):
     title: str
     createdAt: datetime
     updatedAt: datetime
+    firstMessage: str | None = None
 
 
 class ChatMessageOut(BaseModel):
@@ -52,6 +53,7 @@ def _to_thread(row: dict) -> ThreadOut:
         title=row["title"],
         createdAt=row["created_at"],
         updatedAt=row["updated_at"],
+        firstMessage=row.get("first_message"),
     )
 
 
@@ -85,6 +87,7 @@ async def list_threads(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> list[ThreadOut]:
     client = await get_async_admin_client()
+    await chats.purge_stale_empty_threads(client, current_user.id)
     rows = await chats.list_threads(client, current_user.id)
     return [_to_thread(row) for row in rows]
 
@@ -117,3 +120,14 @@ async def list_messages(
     await _owned_thread(client, thread_id, current_user.id)
     rows = await chats.list_messages(client, thread_id)
     return [_to_message(row) for row in rows]
+
+
+@router.delete("/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_thread(
+    thread_id: uuid.UUID,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> Response:
+    client = await get_async_admin_client()
+    await _owned_thread(client, thread_id, current_user.id)
+    await chats.delete_thread(client, thread_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

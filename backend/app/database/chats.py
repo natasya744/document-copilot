@@ -8,19 +8,17 @@ stay in place as defense-in-depth.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from supabase import AsyncClient
 
 
 async def list_threads(client: AsyncClient, user_id: uuid.UUID) -> list[dict]:
-    """Return the user's threads, most recently updated first."""
-    result = await (
-        client.table("chat_threads")
-        .select("*")
-        .eq("user_id", str(user_id))
-        .order("updated_at", desc=True)
-        .execute()
-    )
+    """Return the user's threads with first user message, most recently updated first."""
+    result = await client.rpc(
+        "get_threads_with_first_message",
+        {"p_user_id": str(user_id)}
+    ).execute()
     return result.data or []
 
 
@@ -82,6 +80,7 @@ async def create_message(
         )
         .execute()
     )
+    await touch_thread(client, thread_id)
     return result.data[0]
 
 
@@ -110,3 +109,42 @@ async def create_citation(
         .execute()
     )
     return result.data[0]
+
+
+async def delete_thread(client: AsyncClient, thread_id: uuid.UUID) -> None:
+    """Permanently delete a thread and all its messages (CASCADE via FK)."""
+    await client.table("chat_threads").delete().eq("id", str(thread_id)).execute()
+
+
+async def touch_thread(client: AsyncClient, thread_id: uuid.UUID) -> None:
+    """Bump a thread's ``updated_at`` so recency reflects the last message."""
+    await (
+        client.table("chat_threads")
+        .update({"updated_at": datetime.now(UTC).isoformat()})
+        .eq("id", str(thread_id))
+        .execute()
+    )
+
+
+async def purge_stale_empty_threads(
+    client: AsyncClient, user_id: uuid.UUID, *, days: int = 7
+) -> None:
+    """Delete the user's empty "new chat" stubs older than ``days`` days.
+
+    A stub is a thread with no messages at all — there is no user question to
+    preserve. Threads that contain any real conversation are never touched,
+    regardless of age.
+    """
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+    rows = await (
+        client.table("chat_threads")
+        .select("id, chat_messages(id)")
+        .eq("user_id", str(user_id))
+        .lt("updated_at", cutoff)
+        .execute()
+    )
+    stale_ids = [
+        str(row["id"]) for row in rows.data if not row.get("chat_messages")
+    ]
+    for thread_id in stale_ids:
+        await delete_thread(client, uuid.UUID(thread_id))

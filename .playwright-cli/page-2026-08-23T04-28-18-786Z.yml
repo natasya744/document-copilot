@@ -1,0 +1,76 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Document Copilot
+          - generic [ref=e13]: SEC Intelligence
+      - button "Collapse sidebar (⌘B)" [ref=e14] [cursor=pointer]:
+        - img
+        - generic [ref=e15]: Collapse sidebar (⌘B)
+    - generic [ref=e16]:
+      - button "New chat" [ref=e17] [cursor=pointer]:
+        - img
+        - generic [ref=e18]: New chat
+      - generic [ref=e19]:
+        - img [ref=e20]
+        - textbox "Search chats…" [ref=e23]
+    - button "UI uitest@driftwood.example Financial Analyst" [ref=e34] [cursor=pointer]:
+      - generic [ref=e35]:
+        - generic [ref=e37]: UI
+        - generic [ref=e38]:
+          - generic [ref=e39]: uitest@driftwood.example
+          - generic [ref=e40]: Financial Analyst
+      - img [ref=e41]
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e48]:
+        - img [ref=e50]
+        - heading "SEC Document Copilot" [level=1] [ref=e53]
+        - paragraph [ref=e54]: Query multi-year financial statements, MD&A disclosures, and risk factors across AAPL, AMZN, GOOGL, MSFT, and NVDA with verifiable citations.
+        - generic [ref=e55]:
+          - button "Revenue & Segments Apple Revenue Mix (2021–2025) How did Apple's revenue mix across iPhone, Services, Mac, iPad, and Wearables change from 2021–2025?" [ref=e56] [cursor=pointer]:
+            - generic [ref=e57]:
+              - generic [ref=e58]:
+                - generic [ref=e59]:
+                  - img
+                  - text: Revenue & Segments
+                - img [ref=e60]
+              - heading "Apple Revenue Mix (2021–2025)" [level=3] [ref=e63]
+              - paragraph [ref=e64]: How did Apple's revenue mix across iPhone, Services, Mac, iPad, and Wearables change from 2021–2025?
+          - button "Segment Profitability Amazon AWS vs Retail Operating Margins How did Amazon's AWS operating income compare with its North America and International segments?" [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - generic [ref=e68]:
+                  - img
+                  - text: Segment Profitability
+                - img [ref=e69]
+              - heading "Amazon AWS vs Retail Operating Margins" [level=3] [ref=e72]
+              - paragraph [ref=e73]: How did Amazon's AWS operating income compare with its North America and International segments?
+          - button "Risk Factor Evolution AI Infrastructure Disclosures Which of the five companies changed AI or cloud infrastructure risk-factor language between 2021 and 2025?" [ref=e74] [cursor=pointer]:
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - generic [ref=e77]:
+                  - img
+                  - text: Risk Factor Evolution
+                - img [ref=e78]
+              - heading "AI Infrastructure Disclosures" [level=3] [ref=e81]
+              - paragraph [ref=e82]: Which of the five companies changed AI or cloud infrastructure risk-factor language between 2021 and 2025?
+          - button "CapEx & Commitments Big Tech CapEx Comparison Compare capital expenditures and purchase commitments across Microsoft, Alphabet, Amazon, and NVIDIA." [ref=e83] [cursor=pointer]:
+            - generic [ref=e84]:
+              - generic [ref=e85]:
+                - generic [ref=e86]:
+                  - img
+                  - text: CapEx & Commitments
+                - img [ref=e87]
+              - heading "Big Tech CapEx Comparison" [level=3] [ref=e90]
+              - paragraph [ref=e91]: Compare capital expenditures and purchase commitments across Microsoft, Alphabet, Amazon, and NVIDIA.
+      - generic [ref=e94]:
+        - textbox "Ask a question about the filings…" [ref=e95]
+        - generic [ref=e96]:
+          - generic [ref=e98]: Enter to send · Shift+Enter for new line
+          - generic [ref=e99]:
+            - button "Send message" [disabled]:
+              - img
+              - generic: Send message
