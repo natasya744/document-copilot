@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react"
-import { NavLink, useNavigate, useParams } from "react-router-dom"
-import { MessageSquare, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react"
+import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom"
+import { Loader2, MessageSquare, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
 import type { Thread } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api"
+import { useThreads } from "@/lib/threads"
 
 import {
   DropdownMenu,
@@ -68,7 +67,7 @@ function truncate(text: string, maxLength: number): string {
 
 function getThreadPreview(thread: Thread): string {
   if (thread.firstMessage) {
-    return truncate(thread.firstMessage, 60)
+    return truncate(thread.firstMessage, 50)
   }
   return thread.title
 }
@@ -81,8 +80,10 @@ export function SidebarHistory({
   onRetry,
   collapsed = false,
 }: SidebarHistoryProps) {
+  const { deleteThread } = useThreads()
   const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const { threadId: activeThreadId } = useParams()
 
   const filteredThreads = useMemo(() => {
@@ -104,11 +105,10 @@ export function SidebarHistory({
     }
     setDeletingThreadId(threadId)
     try {
-      await api.deleteThread(threadId)
-      if (threadId === activeThreadId) {
+      await deleteThread(threadId)
+      if (threadId === activeThreadId || location.pathname.includes(threadId)) {
         navigate("/")
       }
-      onRetry()
     } catch {
       alert("Failed to delete conversation")
     } finally {
@@ -120,6 +120,9 @@ export function SidebarHistory({
     return (
       <div className="p-3 text-xs text-destructive flex flex-col gap-1.5">
         <p className="font-medium">Failed to load chats</p>
+        {error && error !== "Failed to load conversations" && (
+          <p className="text-[11px] opacity-80 break-words">{error}</p>
+        )}
         <button
           type="button"
           onClick={onRetry}
@@ -170,70 +173,108 @@ export function SidebarHistory({
             </h4>
           )}
           <div className="space-y-0.5">
-            {group.items.map((thread) => (
-              <div
-                key={thread.id}
-                className="group flex items-center gap-1.5 rounded-lg py-2 text-xs font-normal transition-all"
-              >
-                <NavLink
-                  to={`/thread/${thread.id}`}
-                  title={getThreadPreview(thread)}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-normal transition-all select-none cursor-pointer",
-                      isActive
-                        ? "bg-foreground text-background font-medium shadow-xs"
-                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                      collapsed && "justify-center px-2"
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <MessageSquare
-                        className={cn(
-                          "size-3.5 shrink-0 transition-colors",
-                          isActive
-                            ? "text-background"
-                            : "text-muted-foreground group-hover:text-foreground"
-                        )}
-                      />
-                      {!collapsed && (
-                        <span className="truncate flex-1">{getThreadPreview(thread)}</span>
-                      )}
-                    </>
+            {group.items.map((thread) => {
+              const isActive =
+                thread.id === activeThreadId || location.pathname === `/thread/${thread.id}`
+              const isDeleting = deletingThreadId === thread.id
+
+              return (
+                <div
+                  key={thread.id}
+                  className={cn(
+                    "group grid items-center rounded-lg text-xs font-normal transition-all duration-150 w-full",
+                    collapsed ? "grid-cols-1" : "grid-cols-[1fr_auto]",
+                    isActive
+                      ? "bg-foreground text-background font-medium shadow-xs"
+                      : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                   )}
-                </NavLink>
-                {!collapsed && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                >
+                  <NavLink
+                    to={`/thread/${thread.id}`}
+                    title={getThreadPreview(thread)}
+                    className={cn(
+                      "flex items-center gap-2 min-w-0 px-2.5 py-2 select-none cursor-pointer overflow-hidden",
+                      collapsed && "justify-center px-2"
+                    )}
+                  >
+                    <MessageSquare
+                      className={cn(
+                        "size-3.5 shrink-0 transition-colors",
+                        isActive
+                          ? "text-background"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    />
+                    {!collapsed && (
+                      <span className="truncate text-left block w-full">
+                        {getThreadPreview(thread)}
+                      </span>
+                    )}
+                  </NavLink>
+
+                  {!collapsed && (
+                    <div className="flex items-center gap-0.5 pr-1.5 opacity-50 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      {/* 3-dots Dropdown Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            title="Thread options"
+                            className={cn(
+                              "size-6 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0",
+                              isActive
+                                ? "text-background/80 hover:text-background hover:bg-background/20"
+                                : "text-muted-foreground/70 hover:text-foreground hover:bg-muted group-hover:text-foreground"
+                            )}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="size-3.5" />
+                            )}
+                            <span className="sr-only">Thread options</span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={4} className="w-36 p-1">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteThread(thread.id)
+                            }}
+                            disabled={isDeleting}
+                            className="flex items-center gap-2 py-1.5 px-2 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive hover:bg-destructive/10 cursor-pointer"
+                          >
+                            <Trash2 className="size-3.5 text-destructive shrink-0" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Direct Trash / Delete Icon Button */}
+                      <button
+                        type="button"
+                        title="Delete thread"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteThread(thread.id)
+                        }}
+                        disabled={isDeleting}
                         className={cn(
-                          "size-7 p-0 text-muted-foreground hover:text-foreground transition-opacity",
-                          (deletingThreadId === thread.id || thread.id === activeThreadId) ||
-                            "opacity-0 group-hover:opacity-100"
+                          "size-6 flex items-center justify-center rounded-md transition-all cursor-pointer shrink-0",
+                          isActive
+                            ? "text-background/80 hover:text-red-300 hover:bg-background/20"
+                            : "text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 group-hover:text-destructive"
                         )}
-                        disabled={deletingThreadId === thread.id}
                       >
-                        <MoreHorizontal className="size-3.5" />
-                        <span className="sr-only">Thread options</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="left" className="p-1">
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteThread(thread.id)}
-                        disabled={deletingThreadId === thread.id}
-                        className="py-1.5 px-2 text-xs text-destructive hover:bg-muted/80"
-                      >
-                        <Trash2 className="size-2.5 mr-1" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            ))}
+                        <Trash2 className="size-3.5 shrink-0" />
+                        <span className="sr-only">Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       ))}

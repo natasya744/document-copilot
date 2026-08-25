@@ -12,6 +12,7 @@ interface ThreadsContextValue {
   error: string | null
   refreshThreads: () => Promise<void>
   createThread: (title?: string) => Promise<Thread>
+  deleteThread: (threadId: string) => Promise<void>
 }
 
 const ThreadsContext = createContext<ThreadsContextValue | null>(null)
@@ -74,6 +75,11 @@ export function ThreadsProvider({ children }: { children: ReactNode }) {
     return newThread
   }, [])
 
+  const deleteThread = useCallback(async (threadId: string) => {
+    await api.deleteThread(threadId)
+    setThreads((prev) => (prev ? prev.filter((t) => t.id !== threadId) : prev))
+  }, [])
+
   const value = useMemo(
     () => ({
       threads,
@@ -81,8 +87,9 @@ export function ThreadsProvider({ children }: { children: ReactNode }) {
       error,
       refreshThreads,
       createThread,
+      deleteThread,
     }),
-    [threads, loading, error, refreshThreads, createThread],
+    [threads, loading, error, refreshThreads, createThread, deleteThread],
   )
 
   return <ThreadsContext.Provider value={value}>{children}</ThreadsContext.Provider>

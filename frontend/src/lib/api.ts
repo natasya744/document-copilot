@@ -42,6 +42,21 @@ export interface ChatMessage {
   parts?: MessagePart[]
 }
 
+/** Surrounding context passage around a chunk. */
+export interface SurroundingChunk {
+  chunkId: string
+  documentId: string
+  chunkIndex: number
+  ticker: string
+  companyName: string
+  filingType: string
+  filingDate: string
+  year: number
+  page: string | null
+  section: string | null
+  text: string
+}
+
 /**
  * Product-level API client. Always goes through `request` so the base URL,
  * bearer token, timeouts, and error shaping stay in one place.
@@ -64,4 +79,7 @@ export const api = {
 
   listMessages: (threadId: string) =>
     request<ChatMessage[]>(`/threads/${threadId}/messages`),
+
+  getSurroundingChunks: (chunkId: string, window = 1) =>
+    request<SurroundingChunk[]>(`/chunks/${chunkId}/surrounding?window=${window}`),
 }

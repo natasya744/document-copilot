@@ -81,7 +81,7 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 - [x] Frontend: live pipeline status (`data-status` SSE → `PipelineStatus` component) replaces the static thinking dots
 - [x] Frontend: empty-state suggestions now mirror the client brief questions
 - [x] Live gate run green (with per-question checks; report to `/tmp/gate-report*.md`)
-- [ ] Full pilot flow manually: sign in → ask → verify citation → history persists
+- [x] Full pilot flow manually: sign in → ask → verify citation → history persists
 
 ## Phase 7 — Deploy
 

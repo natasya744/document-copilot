@@ -48,7 +48,7 @@ export function MessageItem({ message }: { message: UIMessage }) {
           </div>
         ) : (
           <div className="w-full space-y-2 rounded-2xl border border-border/80 bg-card/60 p-4 shadow-xs">
-            <MarkdownContent content={text} />
+            <MarkdownContent content={text} citations={citations} />
             <SourcePassagePanel citations={citations} />
             <MessageActions content={text} />
           </div>

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.admin import router as admin_router
 from app.api.chat import router as chat_router
 from app.api.chat_stream import router as chat_stream_router
+from app.api.chunks import router as chunks_router
 from app.api.errors import register_exception_handlers
 from app.config import settings
 
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(admin_router)
 app.include_router(chat_router)
 app.include_router(chat_stream_router)
+app.include_router(chunks_router)
 
 
 @app.get("/health", tags=["Health"])
