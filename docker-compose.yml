@@ -13,11 +13,11 @@ services:
       - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       - OPENAI_EMBEDDING_DIMENSIONS=${OPENAI_EMBEDDING_DIMENSIONS:-1536}
       - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4o}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://copilot.konsultankuai.site,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_public"
-      - "traefik.http.routers.doccopilot-api.rule=Host(`copilot-api.konsultankuai.site`)"
+      - "traefik.http.routers.doccopilot-api.rule=Host(`${API_DOMAIN}`)"
       - "traefik.http.routers.doccopilot-api.entrypoints=websecure"
       - "traefik.http.routers.doccopilot-api.tls.certresolver=myresolver"
       - "traefik.http.services.doccopilot-api.loadbalancer.server.port=8000"
@@ -42,7 +42,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_public"
-      - "traefik.http.routers.doccopilot-web.rule=Host(`copilot.konsultankuai.site`)"
+      - "traefik.http.routers.doccopilot-web.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.doccopilot-web.entrypoints=websecure"
       - "traefik.http.routers.doccopilot-web.tls.certresolver=myresolver"
       - "traefik.http.services.doccopilot-web.loadbalancer.server.port=80"
