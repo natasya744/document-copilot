@@ -18,7 +18,7 @@ Full brief: [docs/client-brief.md](docs/client-brief.md)
 | Migrations         | SQLAlchemy models + Alembic                          |
 | Retrieval          | Supabase `pgvector` + Postgres full-text search      |
 | Auth               | Supabase Auth (email only)                           |
-| Hosting            | Railway                                              |
+| Hosting            | Hostinger/Vps                                        |
 | LLM + embeddings   | OpenAI                                               |
 
 ## Repo layout
