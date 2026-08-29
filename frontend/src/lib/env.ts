@@ -13,7 +13,7 @@ function requireEnv(name: string): string {
 }
 
 export const env = {
-  apiBaseUrl: requireEnv('VITE_API_BASE_URL'),
+  apiBaseUrl: import.meta.env['VITE_API_BASE_URL'] ?? '',
   supabaseUrl: requireEnv('VITE_SUPABASE_URL'),
   supabaseAnonKey: requireEnv('VITE_SUPABASE_ANON_KEY'),
 }
