@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import type { FormEvent } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
-import { Lock, Mail, Sparkles, X } from "lucide-react"
+import { Lock, Mail, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -84,22 +84,6 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4 select-none">
-      {toast.show && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in-0 max-w-sm">
-          <div className="rounded-lg border border-border bg-muted/90 p-3 shadow-lg flex items-start gap-2">
-            <span className="text-xs text-foreground">
-              {toast.message}
-            </span>
-            <button
-              type="button"
-              onClick={() => setToast({ show: false, message: "" })}
-              className="shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <X className="size-3" />
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="w-full max-w-sm space-y-4">
         {/* Branding */}
@@ -172,6 +156,19 @@ export function LoginPage() {
                   {notice}
                 </div>
               ) : null}
+
+              {toast.show && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700 flex items-start gap-2 animate-in slide-in-from-top-2 fade-in-0">
+                  <span>{toast.message}</span>
+                  <button
+                    type="button"
+                    onClick={() => setToast({ show: false, message: "" })}
+                    className="shrink-0 text-amber-700 hover:text-foreground cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"
