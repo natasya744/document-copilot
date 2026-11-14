@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,8 +9,17 @@ from app.api.chat_stream import router as chat_stream_router
 from app.api.chunks import router as chunks_router
 from app.api.errors import register_exception_handlers
 from app.config import settings
+from app.tracing import flush_traces, init_tracing
 
-app = FastAPI(title="Document Copilot API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_tracing()
+    yield
+    flush_traces()
+
+
+app = FastAPI(title="Document Copilot API", lifespan=lifespan)
 
 register_exception_handlers(app)
 

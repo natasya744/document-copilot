@@ -191,6 +191,7 @@ class DocumentCopilotAgent:
             )
         self._agent = Agent(
             model,
+            name="document_copilot_agent",
             deps_type=DocAgentDeps,
             output_type=AgentAnswer,
             system_prompt=INSTRUCTIONS,

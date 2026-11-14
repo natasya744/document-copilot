@@ -7,7 +7,7 @@ The request path must not block on network I/O, so this mirrors
 
 from __future__ import annotations
 
-from openai import AsyncOpenAI
+from langfuse.openai import AsyncOpenAI
 
 from app.config import settings
 

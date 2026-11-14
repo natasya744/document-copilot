@@ -30,6 +30,7 @@ from app.config import settings
 from app.database import chats
 from app.grounding.validator import GroundingError, validate_grounding
 from app.retrieval.retriever import HybridRetriever
+from app.tracing import trace_context, trace_observation
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,7 @@ async def run_turn(
     prior_messages: Sequence[dict],
     retriever: Retriever,
     agent: AnswerAgent,
+    user_id: uuid.UUID | None = None,
 ) -> AsyncIterator[str]:
     """Run a full turn and yield AI SDK stream events (SSE-encoded JSON).
 
@@ -160,88 +162,193 @@ async def run_turn(
         yield error_event("Request contains no messages")
         return
 
+    prior = _prior_turns(prior_messages)
+    turn = _new_messages(prior, incoming)
+    if not turn:
+        yield error_event("Request contains no messages")
+        return
+
     try:
-        prior = _prior_turns(prior_messages)
-        turn = _new_messages(prior, incoming)
-        if not turn:
-            yield error_event("Request contains no messages")
-            return
         query = _last_user_text(turn)
-        conversation = prior + turn
-
-        yield status_event("retrieving", "Searching the filing corpus…")
-        passages = await retriever.retrieve(query)
-        best = _best_relevance(passages)
-        if best is not None and best < settings.min_relevance_score:
-            yield status_event("refusing", "No relevant passages found — refusing")
-            answer = GroundedAnswer(answer=_RELEVANCE_REFUSAL, insufficient_evidence=True)
-            evidence = []
-        else:
-            yield status_event("retrieved", f"Found {len(passages)} relevant passages")
-            yield status_event("generating", "Drafting a grounded answer…")
-            status_queue: asyncio.Queue[str] = asyncio.Queue()
-
-            async def _run_agent() -> tuple[GroundedAnswer, Sequence[SourcePassage]]:
-                return await agent.generate(
-                    conversation,
-                    passages,
-                    on_status=lambda stage, label: status_queue.put_nowait(
-                        status_event(stage, label)
-                    ),
-                )
-
-            answer_task = asyncio.create_task(_run_agent())
-            async for event in _drain_statuses(answer_task, status_queue):
-                yield event
-            answer, evidence = answer_task.result()
-            yield status_event("validating", "Verifying citations…")
-            answer = validate_grounding(answer, evidence)
-    except (ChatInputError, GroundingError) as exc:
+    except ChatInputError as exc:
         yield error_event(exc.args[0])
         return
-    except Exception as exc:
-        # Boundary failure from retrieval or the LLM: stream a friendly in-band
-        # error instead of aborting the stream and leaving the client guessing.
-        logger.warning("chat turn failed", exc_info=exc)
-        yield error_event(
-            "The assistant hit a problem while answering. Please try again."
-        )
-        return
 
-    yield status_event("saving", "Saving to history…")
-    next_sequence = (
-        prior_messages[-1]["sequence_number"] + 1 if prior_messages else 1
-    )
+    conversation = prior + turn
 
-    if turn[-1].role == "user":
-        await chats.create_message(
-            client,
-            thread_id=thread_id,
-            role="user",
-            content=turn[-1].content,
-            sequence_number=next_sequence,
-        )
-        next_sequence += 1
+    with trace_observation(
+        name="chat-turn",
+        as_type="span",
+        input={"query": query},
+        metadata={
+            "num_prior_messages": len(prior),
+            "chat_model": settings.openai_chat_model,
+        },
+    ) as turn_span:
+        with trace_context(
+            user_id=str(user_id) if user_id else None,
+            session_id=str(thread_id),
+            tags=["chat", "grounded-rag"],
+        ):
+            try:
+                yield status_event("retrieving", "Searching the filing corpus…")
+                with trace_observation(
+                    name="hybrid-retrieval",
+                    as_type="retriever",
+                    input={
+                        "query": query,
+                        "candidate_k": settings.retrieval_candidate_k,
+                        "top_k": settings.retrieval_top_k,
+                    },
+                ) as ret_span:
+                    passages = await retriever.retrieve(query)
+                    best = _best_relevance(passages)
+                    ret_span.update(
+                        output={
+                            "count": len(passages),
+                            "best_relevance": best,
+                            "passages": [
+                                {
+                                    "chunk_id": str(p.chunk_id),
+                                    "ticker": p.ticker,
+                                    "year": p.year,
+                                    "filing_type": p.filing_type,
+                                    "section": p.section,
+                                    "score": p.score,
+                                }
+                                for p in passages
+                            ],
+                        }
+                    )
 
-    assistant_row = await chats.create_message(
-        client,
-        thread_id=thread_id,
-        role="assistant",
-        content=answer.answer,
-        sequence_number=next_sequence,
-        message_json=to_ui_message_json(
-            role="assistant", content=answer.answer, citations=answer.citations
-        ),
-    )
-    for citation in answer.citations:
-        await chats.create_citation(
-            client,
-            message_id=uuid.UUID(assistant_row["id"]),
-            chunk_id=citation.chunk_id,
-            document_id=citation.document_id,
-            excerpt=citation.excerpt,
-            metadata_=citation.display_metadata(),
-        )
+                if best is not None and best < settings.min_relevance_score:
+                    yield status_event(
+                        "refusing", "No relevant passages found — refusing"
+                    )
+                    answer = GroundedAnswer(
+                        answer=_RELEVANCE_REFUSAL, insufficient_evidence=True
+                    )
+                    evidence = []
+                    turn_span.update(
+                        output={
+                            "answer": _RELEVANCE_REFUSAL,
+                            "insufficient_evidence": True,
+                            "refusal_reason": "low_relevance",
+                        }
+                    )
+                else:
+                    yield status_event(
+                        "retrieved", f"Found {len(passages)} relevant passages"
+                    )
+                    yield status_event("generating", "Drafting a grounded answer…")
+                    status_queue: asyncio.Queue[str] = asyncio.Queue()
 
-    for event in answer_events(answer, assistant_row["id"]):
-        yield event
+                    async def _run_agent() -> tuple[
+                        GroundedAnswer, Sequence[SourcePassage]
+                    ]:
+                        return await agent.generate(
+                            conversation,
+                            passages,
+                            on_status=lambda stage, label: status_queue.put_nowait(
+                                status_event(stage, label)
+                            ),
+                        )
+
+                    answer_task = asyncio.create_task(_run_agent())
+                    async for event in _drain_statuses(answer_task, status_queue):
+                        yield event
+                    answer, evidence = answer_task.result()
+                    yield status_event("validating", "Verifying citations…")
+                    with trace_observation(
+                        name="grounding-validation",
+                        as_type="evaluator",
+                        input={
+                            "answer": answer.answer,
+                            "citations": [str(c.chunk_id) for c in answer.citations],
+                            "evidence_count": len(evidence),
+                        },
+                    ) as val_span:
+                        answer = validate_grounding(answer, evidence)
+                        val_span.update(
+                            output={
+                                "valid": True,
+                                "citations_count": len(answer.citations),
+                            }
+                        )
+            except (ChatInputError, GroundingError) as exc:
+                turn_span.update(level="ERROR", status_message=exc.args[0])
+                yield error_event(exc.args[0])
+                return
+            except Exception as exc:
+                # Boundary failure from retrieval or the LLM: stream a friendly in-band
+                # error instead of aborting the stream and leaving the client guessing.
+                logger.warning("chat turn failed", exc_info=exc)
+                turn_span.update(level="ERROR", status_message=str(exc))
+                yield error_event(
+                    "The assistant hit a problem while answering. Please try again."
+                )
+                return
+
+            yield status_event("saving", "Saving to history…")
+            next_sequence = (
+                prior_messages[-1]["sequence_number"] + 1 if prior_messages else 1
+            )
+
+            with trace_observation(
+                name="save-history",
+                as_type="span",
+                input={
+                    "thread_id": str(thread_id),
+                    "citations_count": len(answer.citations),
+                },
+            ):
+                if turn[-1].role == "user":
+                    await chats.create_message(
+                        client,
+                        thread_id=thread_id,
+                        role="user",
+                        content=turn[-1].content,
+                        sequence_number=next_sequence,
+                    )
+                    next_sequence += 1
+
+                assistant_row = await chats.create_message(
+                    client,
+                    thread_id=thread_id,
+                    role="assistant",
+                    content=answer.answer,
+                    sequence_number=next_sequence,
+                    message_json=to_ui_message_json(
+                        role="assistant",
+                        content=answer.answer,
+                        citations=answer.citations,
+                    ),
+                )
+                for citation in answer.citations:
+                    await chats.create_citation(
+                        client,
+                        message_id=uuid.UUID(assistant_row["id"]),
+                        chunk_id=citation.chunk_id,
+                        document_id=citation.document_id,
+                        excerpt=citation.excerpt,
+                        metadata_=citation.display_metadata(),
+                    )
+
+            turn_span.update(
+                output={
+                    "answer": answer.answer,
+                    "citations": [
+                        {
+                            "chunk_id": str(c.chunk_id),
+                            "ticker": c.ticker,
+                            "year": c.year,
+                            "filing_type": c.filing_type,
+                        }
+                        for c in answer.citations
+                    ],
+                    "insufficient_evidence": answer.insufficient_evidence,
+                }
+            )
+
+            for event in answer_events(answer, assistant_row["id"]):
+                yield event

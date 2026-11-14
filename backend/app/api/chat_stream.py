@@ -57,6 +57,7 @@ async def chat_stream(
         prior_messages=prior_messages,
         retriever=retriever,
         agent=default_agent(retriever),
+        user_id=current_user.id,
     )
     return StreamingResponse(
         events,

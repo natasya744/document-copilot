@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Annotated
 
@@ -81,6 +82,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # Langfuse Observability
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "http://localhost:3000"
+    langfuse_environment: str = "development"
+    langfuse_enabled: bool = True
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def split_allowed_origins(cls, value: object) -> object:
@@ -97,3 +105,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Mirror third-party SDK configuration to os.environ so Langfuse picks them up
+if settings.langfuse_public_key:
+    os.environ["LANGFUSE_PUBLIC_KEY"] = settings.langfuse_public_key
+if settings.langfuse_secret_key:
+    os.environ["LANGFUSE_SECRET_KEY"] = settings.langfuse_secret_key
+if settings.langfuse_host:
+    os.environ["LANGFUSE_HOST"] = settings.langfuse_host
+    os.environ["LANGFUSE_BASE_URL"] = settings.langfuse_host
