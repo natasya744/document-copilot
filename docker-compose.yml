@@ -14,6 +14,11 @@ services:
       - OPENAI_EMBEDDING_DIMENSIONS=${OPENAI_EMBEDDING_DIMENSIONS:-1536}
       - OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4o}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-http://localhost:3000}
+      - LANGFUSE_ENVIRONMENT=${LANGFUSE_ENVIRONMENT:-production}
+      - LANGFUSE_ENABLED=${LANGFUSE_ENABLED:-true}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy_public"
